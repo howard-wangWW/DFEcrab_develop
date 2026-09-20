@@ -129,17 +129,20 @@ git push origin main > /tmp/push.log 2>&1
 | `*.sqlite` `*.DAT` `*.cache/` `用户列表索引/` | 业务数据库与网格数据 |
 | `node_modules/` | 前端依赖 |
 | `logs/` `nohup.out` `.env` | 日志与本地配置 |
-| `src/agent/loop.py` | IANDSEC DRM 透明加密，git 读取为密文/无权限 |
-| `src/agent/multi/reflector.py` | IANDSEC DRM 透明加密，git 读取为密文 |
+| `src/agent/multi/reflector.py` | IANDSEC DRM 透明加密，git 当前读取为密文 |
 
 ### 关于 DRM 加密文件
 
-`src/agent/loop.py`、`src/agent/multi/reflector.py` 等文件受公司透明加密系统
-（IANDSEC）保护：文件在磁盘上是密文，只有白名单程序能读到明文。
-`git.exe` 通常不在白名单内，因此：
+部分源码受公司透明加密系统（IANDSEC）保护：文件在磁盘上是密文，
+只有白名单程序能读到明文。`git.exe` 通常不在白名单内，因此：
 
 - 现象一：`error: open("..."): Permission denied`
 - 现象二：能读但内容是密文（提交上去是乱码）
+- 现象三：放行某程序后，git 能读到明文（需逐文件验证）
+
+当前状态（2026-09-20）：
+- `src/agent/loop.py` 已纳入仓库（git 读取明文，89309 字节）
+- `src/agent/multi/reflector.py` 仍排除（git 仍读取为密文）
 
 **排查命令**：
 
@@ -152,7 +155,7 @@ data = open(f,'rb').read()
 h_py = hashlib.sha1(b'blob %d\0' % len(data) + data).hexdigest()
 h_git = subprocess.run(['git','hash-object',f], capture_output=True, text=True).stdout.strip()
 print(f, 'git读到', '明文' if h_py==h_git else '密文')
-" src/agent/loop.py
+" src/agent/multi/reflector.py
 ```
 
 输出「密文」说明该文件不能用 git 上传，需要走公司的正式解密/导出流程。
