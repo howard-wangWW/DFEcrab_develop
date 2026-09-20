@@ -1,0 +1,94 @@
+<div class="slide storage">
+  <h2 class="slide-title">💾 数据持久化</h2>
+  <div class="storage-content">
+    <div class="storage-structure">
+      <h3>文件结构</h3>
+      <pre class="file-tree">
+data/
+├── sessions/
+│   ├── session_xxx.json          # Session 元数据
+│   ├── session_xxx_messages.json # 消息历史
+│   ├── periodic_task_id.json     # 定时任务 Session
+│   └── periodic_task_id_messages.json
+├── tasks/audit/
+│   └── audit_xxx.json            # 审计日志
+├── shared_memory/
+│   └── grid_knowledge.json       # 全局共享记忆
+├── reports/
+│   └── grid_load_report_xxx.md   # 生成的报告
+└── memory/
+    ├── successful_patterns.json  # 成功模式
+    ├── professional_knowledge.json
+    └── lessons_learned.json</pre>
+    </div>
+    <div class="storage-features">
+      <div class="sf-card">
+        <h3>📄 Session 持久化</h3>
+        <p>每次 AI 响应后立即保存，确保数据不丢失</p>
+      </div>
+      <div class="sf-card">
+        <h3>🔄 自动加载</h3>
+        <p>服务启动时自动加载所有 Session 到内存</p>
+      </div>
+      <div class="sf-card">
+        <h3>🧹 过期清理</h3>
+        <p>每 5 分钟检查一次，标记 120 分钟无活动的 Session</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.storage {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.storage .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .storage-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .storage-structure h3 {
+    font-size: 20px;
+    margin: 0 0 10px 0;
+    color: #203a43;
+  }
+  .file-tree {
+    background: #1a1a2e;
+    color: #a8d8ea;
+    padding: 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .storage-features {
+    display: flex;
+    gap: 12px;
+  }
+  .sf-card {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .sf-card h3 {
+    font-size: 16px;
+    margin: 0 0 6px 0;
+    color: #203a43;
+  }
+  .sf-card p {
+    font-size: 13px;
+    margin: 0;
+    color: #495057;
+    line-height: 1.5;
+  }
+</style>

@@ -1,0 +1,11 @@
+DFEcrab ReAct 上下文工程修复（P0-P2）验证结果
+时间: 2026-09-04 14:06:51
+网关: http://172.20.51.153:6789 | 用户: admin
+======================================================================
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[PASS ] 本地配置·dfecrab.json max_iterations=8 llm_timeout=180 react={'max_tool_result_chars': 12000, 'context_msg_limit': 16, 'deferred_tools': False, 'deferred_keep': 15}
+[PASS ] 语义投影截断 936524->5390 字符，保留 stats/current.amp
+[PASS ] deferred 默认关 kept=20（行为零变化）
+[PASS ] 本地函数冒烟 consts: max_result=12000 msgs=16 threshold=0.85
+[PASS ] AgentConfig max_iterations=8 llm_timeout=180
+[PASS ] 当前模型回显 current_provider=qwen3_32b_q4 max_tokens=32768

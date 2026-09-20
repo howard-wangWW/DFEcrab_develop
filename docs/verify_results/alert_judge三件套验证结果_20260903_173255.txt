@@ -1,0 +1,20 @@
+DFEcrab alert_judge 三件套迁移验证结果
+时间: 2026-09-03 17:32:55
+网关: http://172.20.51.153:6789 | 用户: admin
+======================================================================
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[PASS ] 本地文件 src/alert_judge/__init__.py 存在
+[PASS ] 本地文件 src/alert_judge/config.py 存在
+[PASS ] 本地文件 src/alert_judge/tools.py 存在
+[PASS ] 本地文件 src/alert_judge/agent_caller2.py 存在
+[PASS ] 本地 import 链路 mcp_alert_judge.run / 三件套 / 4 工具全部就绪（无需 fastmcp）
+[PASS ] 本地文件 src/skill/alert_react_pipeline.py 已删除
+[PASS ] grpc_server import 已指向 mcp_servers.mcp_alert_judge.run，无旧引用残留
+[PASS ] MCP服务列表 alert_judge_tools enabled=True tools=4
+[PASS ] Agent列表 alert_judge 存在 | 共 6 个 agent
+[PASS ] alert_judge 普通告警 thought/task_complete 齐全，事件总数=163 | 类型=['chat_stream', 'manager_decision', 'meta', 'task_complete', 'task_finish', 'thought', 'tool_end', 'tool_start']
+[PASS ] alert_judge 事故总短路 命中短路固定文案（长度=151）| 类型=['chat_stream', 'manager_decision', 'meta', 'task_complete', 'task_finish', 'thought', 'tool_end', 'tool_start']
+[FAIL ] alert_judge 事故总短路 事件流含工具事件（短路不应调用工具）→ 疑似服务器仍为旧代码，需先部署 src/alert_judge/ + mcp_alert_judge.py + grpc_server.py
+[WARN ] 会话历史 会话 ajarch_n_173204 无 assistant 消息 roles=[]（alert 专属链路可接受）
+[INFO ] 清理会话 ajarch_n_173204 -> 200
+[INFO ] 清理会话 ajarch_a_173228 -> 200

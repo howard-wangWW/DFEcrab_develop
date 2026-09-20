@@ -1,0 +1,88 @@
+{
+  "model_providers": {
+    "qwen3": {
+      "provider": "openai_compatible",
+      "model_name": "Qwen3-30B-A3B/Qwen3-30B-A3B",
+      "model_type": "openai_chat",
+      "config_name": "qwen3",
+      "api_base": "http://192.168.113.22:8092/v1",
+      "enabled": false,
+      "timeout": 300,
+      "temperature": 0.7,
+      "max_tokens": 4096,
+      "context_length": 8192
+    },
+    "qwen3_32b": {
+      "provider": "openai_compatible",
+      "model_name": "Qwen3-32B",
+      "model_type": "openai_chat",
+      "config_name": "qwen3_32b",
+      "api_base": "http://172.20.51.124:8104/v1",
+      "enabled": false,
+      "timeout": 300,
+      "temperature": 0.7,
+      "max_tokens": 4096,
+      "context_length": 8192
+    },
+    "qwen3_32b_q4": {
+      "provider": "openai_compatible",
+      "model_name": "Qwen3-32B-Q4-K-M",
+      "model_type": "openai_chat",
+      "config_name": "qwen3_32b_q4",
+      "api_base": "http://172.20.41.86:8089/v1",
+      "enabled": true,
+      "timeout": 300,
+      "temperature": 0.7,
+      "max_tokens": 8192,
+      "context_length": 32768,
+      "api_key": "",
+      "think_config": null
+    },
+    "test2": {
+      "provider": "openai_compatible",
+      "model_name": "111",
+      "model_type": "openai_chat",
+      "api_base": "111",
+      "api_key": "",
+      "timeout": 120,
+      "enabled": false,
+      "context_length": 16384,
+      "max_tokens": 2048,
+      "think_config": null
+    }
+  },
+  "think_config": {
+    "start_tags": [
+      "<think>",
+      "<thinking>"
+    ],
+    "end_tags": [
+      "思考标签",
+      "</thinking>",
+      "</think>"
+    ],
+    "reasoning_fields": [
+      "reasoning_content",
+      "reasoning"
+    ],
+    "max_tag_len": 20
+  },
+  "agent_defaults": {
+    "max_iterations": 8,
+    "llm_timeout": 180,
+    "tool_choice": "auto"
+  },
+  "context_engine": {
+    "auto_compact_threshold": 0.85,
+    "compact_keep_recent": 2
+  },
+  "react": {
+    "max_tool_result_chars": 12000,
+    "context_msg_limit": 16,
+    "deferred_tools": false,
+    "deferred_keep": 15
+  },
+  "mcp": {
+    "max_tools_per_agent": 30
+  }
+}

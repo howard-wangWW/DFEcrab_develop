@@ -1,0 +1,93 @@
+{
+  "power_grid_6ce456925d5ead5d": {
+    "doc_id": "power_grid_6ce456925d5ead5d",
+    "file_name": "智慧调度虚拟监视员信号分级处置方案_20260827_183241.docx",
+    "file_path": "documents/power_grid/智慧调度虚拟监视员信号分级处置方案_20260827_183241.docx",
+    "file_type": "docx",
+    "category": "power_grid",
+    "title": "智慧调度虚拟监视员信号分级处置方案",
+    "description": "",
+    "upload_time": "2026-08-27T18:32:41.527093",
+    "file_size": 20659,
+    "status": "indexed",
+    "chunk_count": 7
+  },
+  "接口文档_2dfe56320558d2c8": {
+    "doc_id": "接口文档_2dfe56320558d2c8",
+    "file_name": "前端对接文档_技能管理.md",
+    "file_path": "documents/接口文档/前端对接文档_技能管理.md",
+    "file_type": "md",
+    "category": "接口文档",
+    "title": "前端对接文档_技能管理",
+    "description": "",
+    "upload_time": "2026-08-28T10:49:45.347371",
+    "file_size": 6004,
+    "status": "indexed",
+    "chunk_count": 16
+  },
+  "接口文档_8a7685c4dc1c5c54": {
+    "doc_id": "接口文档_8a7685c4dc1c5c54",
+    "file_name": "前端对接文档_对话接口.md",
+    "file_path": "documents/接口文档/前端对接文档_对话接口.md",
+    "file_type": "md",
+    "category": "接口文档",
+    "title": "前端对接文档_对话接口",
+    "description": "",
+    "upload_time": "2026-08-28T14:07:35.610387",
+    "file_size": 25946,
+    "status": "processed",
+    "chunk_count": 78
+  },
+  "接口文档_8a2808ed19891a11": {
+    "doc_id": "接口文档_8a2808ed19891a11",
+    "file_name": "前端对接文档_Agent管理.md",
+    "file_path": "documents/接口文档/前端对接文档_Agent管理.md",
+    "file_type": "md",
+    "category": "接口文档",
+    "title": "前端对接文档_Agent管理",
+    "description": "",
+    "upload_time": "2026-08-28T14:08:55.475212",
+    "file_size": 6881,
+    "status": "processed",
+    "chunk_count": 21
+  },
+  "other_d677f7a593fa4532": {
+    "doc_id": "other_d677f7a593fa4532",
+    "file_name": "a9d36c742eec4ee390b14cdb1b3d8313_help.pdf",
+    "file_path": "documents/other/a9d36c742eec4ee390b14cdb1b3d8313_help.pdf",
+    "file_type": "pdf",
+    "category": "other",
+    "title": "pdf",
+    "description": "",
+    "upload_time": "2026-09-04T16:59:54.676842",
+    "file_size": 341484,
+    "status": "indexed",
+    "chunk_count": 4
+  },
+  "other_ba3f658d283dfe2c": {
+    "doc_id": "other_ba3f658d283dfe2c",
+    "file_name": "b90a0801a4f2437086d431a2694c3438_新能源控制业务运行值班手册-昆明.docx",
+    "file_path": "documents/other/b90a0801a4f2437086d431a2694c3438_新能源控制业务运行值班手册-昆明.docx",
+    "file_type": "docx",
+    "category": "other",
+    "title": "新能源控制业务运行值班手册-昆明",
+    "description": "",
+    "upload_time": "2026-09-10T14:52:34.711952",
+    "file_size": 798588,
+    "status": "failed",
+    "chunk_count": 0
+  },
+  "other_ec6b603266b554d8": {
+    "doc_id": "other_ec6b603266b554d8",
+    "file_name": "f9d04146c5b94056a5635dad9d71334f_新能源控制业务运行值班手册-昆明.docx",
+    "file_path": "documents/other/f9d04146c5b94056a5635dad9d71334f_新能源控制业务运行值班手册-昆明.docx",
+    "file_type": "docx",
+    "category": "other",
+    "title": "新能源控制业务运行值班手册-昆明",
+    "description": "",
+    "upload_time": "2026-09-10T18:06:27.244173",
+    "file_size": 6429524,
+    "status": "indexed",
+    "chunk_count": 4
+  }
+}

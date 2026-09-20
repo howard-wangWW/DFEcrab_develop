@@ -1,0 +1,11 @@
+{
+  "xmlFiles": ["新图模.xml"],
+  "zyFile": "中压站线变户.csv",
+  "dyFile": "低压站线变户.csv",
+  "currentFile": "开关电流.dat",
+  "statusFiles": ["开关状态.dt"],
+  "rebuild": "all",
+  "minUsers": 1,
+  "syncDameng": false,
+  "syncDamengUsers": false
+}

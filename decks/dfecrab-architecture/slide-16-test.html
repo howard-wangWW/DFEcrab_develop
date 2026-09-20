@@ -1,0 +1,93 @@
+<div class="slide test">
+  <h2 class="slide-title">✅ 测试与验证</h2>
+  <div class="test-content">
+    <div class="test-results">
+      <h3>API 测试结果</h3>
+      <div class="test-card success">
+        <div class="test-icon">✅</div>
+        <h4>首次对话（自动创建 Session）</h4>
+        <p>Session ID: session_fc4f1bd28fa4<br/>摘要: 文学创作任务<br/>is_new_session: true</p>
+      </div>
+      <div class="test-card success">
+        <div class="test-icon">✅</div>
+        <h4>继续对话（使用 Session ID）</h4>
+        <p>Session ID: session_fc4f1bd28fa4<br/>is_new_session: false<br/>摘要保持不变</p>
+      </div>
+      <div class="test-card success">
+        <div class="test-icon">✅</div>
+        <h4>开新话题（新 Session）</h4>
+        <p>新 Session ID<br/>新摘要: 数据分析 + 电网监控<br/>is_new_session: true</p>
+      </div>
+    </div>
+    <div class="test-commands">
+      <h3>测试命令</h3>
+      <pre class="cmd-block">
+# 测试聊天
+curl -X POST http://localhost:6789/api/v2/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "帮我写一首关于春天的诗"}'
+
+# 列出所有 Session
+curl http://localhost:6789/api/v2/sessions
+
+# 查看 Session 消息
+curl http://localhost:6789/api/v2/sessions/{id}/messages</pre>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.test {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.test .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .test-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .test-results h3, .test-commands h3 {
+    font-size: 20px;
+    margin: 0 0 10px 0;
+    color: #203a43;
+  }
+  .test-card {
+    background: #f0fff4;
+    border: 1px solid #06d6a0;
+    border-radius: 10px;
+    padding: 12px;
+    margin: 8px 0;
+  }
+  .test-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  .test-card h4 {
+    font-size: 15px;
+    margin: 0 0 4px 0;
+    color: #203a43;
+  }
+  .test-card p {
+    font-size: 13px;
+    margin: 0;
+    color: #495057;
+  }
+  .cmd-block {
+    background: #1a1a2e;
+    color: #a8d8ea;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 0;
+  }
+</style>

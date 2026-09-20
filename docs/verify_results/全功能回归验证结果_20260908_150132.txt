@@ -1,0 +1,115 @@
+DFEcrab 全功能回归验证结果
+时间: 2026-09-08 15:01:32
+网关: http://172.20.51.153:6789  用户: admin  知识库: http://172.20.51.153:6788
+模式: 远程(API-only 回滚)
+汇总: PASS=74 FAIL=4 SKIP=3
+------------------------------------------------------------------------------
+
+## 1.基础与健康
+  [PASS] GET /health status=200 
+  [PASS] GET /api/services status=200 
+  [PASS] GET /api/invariants status=200 
+  [PASS] GET /api/v2/workers status=200 
+  [PASS] GET /api/v2/usage/stats status=200 
+
+## 2.智能体管理(含默认助手)
+  [PASS] GET /api/agents 列表 agents=6 
+  [PASS] 列表含 recommended_mcp / is_default 派生字段 
+  [PASS] 顶层 default_agent_id default=dfecrab
+  [PASS] GET /api/agents/{id} 详情 alert_judge 
+  [PASS] 详情含 system_prompt 字段 len=113
+  [PASS] 详情含 description(老 agent 回退索引) 仅处理JSON格式的电力告警信号（含station_insi
+  [PASS] 详情含 recommended_mcp ['blackxml_topology']
+  [PASS] 详情含 is_default False
+  [PASS] POST /api/agents 创建临时智能体 
+  [PASS] PUT /api/agents/{id} 更新 
+  [PASS] PUT /api/agents/{id}/default 设为默认 
+  [PASS] 默认生效且唯一性(旧默认自动清除) default_agent_id=zz_verify_tmp is_default_mark=True
+  [PASS] 负向: 默认不存在的智能体被拒 Agent [zz_not_exist_agent] 不存在
+  [PASS] DELETE /api/agents/{id}/default 取消并回退 default_agent_id=dfecrab
+
+## 3.MCP服务与智能体绑定
+  [PASS] GET /api/mcp/servers servers=3 
+  [PASS] GET /api/agents/{id}/mcp 绑定视图 None
+  [PASS] PUT /api/agents/{id}/mcp 保存绑定(demo) 
+  [PASS] 绑定后列表 recommended_mcp 同步 recommended_mcp=['blackxml_topology', 'demo']
+  [PASS] 负向: 保留服务 alert_judge_tools 绑普通智能体被拒 MCP 服务 [alert_judge_tools] 是保留绑定（仅限 alert_judge），不能绑到智能体 [zz_verify_tmp]
+  [PASS] 负向: 绑定不存在的服务被拒 MCP 服务不存在: zz_no_such_server
+  [PASS] 废弃 POST /api/agents/{id}/mcp 返回迁移提示 POST /api/agents/{agent_id}/mcp 已废弃：绑定编辑已收敛到智能体配置页，请改用 PUT /api/agents/{agent_id
+  [SKIP] MCP toggle/sync(高危写操作) 
+  [PASS] POST /api/mcp/servers/test 连通性 status=200
+
+## 4.技能管理
+  [PASS] GET /api/skills skills=44 
+  [PASS] 技能含富信息(name/description) ['id', 'name', 'icon', 'iconBg', 'category', 'status', 'description', 'version',
+  [PASS] GET /api/skills/search status=200 
+  [PASS] POST /api/skills/reload status=200 
+
+## 5.模型管理
+  [PASS] GET /api/models status=200 
+  [PASS] GET /api/models/current status=200 
+  [PASS] GET /api/fallback/status status=200 
+  [PASS] 存在启用中的模型 total=3 enabled=1
+
+## 6.会话管理
+  [PASS] POST /api/v2/sessions 创建 sid=session_8510f85933e4 
+  [PASS] GET /api/v2/sessions 列表 status=200 
+  [PASS] GET /api/v2/sessions/{id} 详情 status=200
+  [PASS] GET /api/v2/sessions/{id}/messages status=200
+  [PASS] GET /api/v2/sessions/{id}/usage(按模型聚合) status=200
+
+## 7.对话(LLM)
+  [PASS] POST /api/v2/chat 非流式 6.7s resp=正常
+  [PASS] POST /api/v2/chat/stream (SSE) 8.7s events=['meta', 'manager_decision', 'think_start', 'think', 'think', 'think']
+
+## 8.会话附件(上传/列表/下载/删除)
+  [PASS] POST /api/files 上传(multipart) fid=f_e98f67b6 None
+  [PASS] GET /api/files 列表 files=1
+  [PASS] GET /api/files/{id}/download status=200 
+  [PASS] DELETE /api/files/{id} 删除 status=200
+
+## 9.知识库(6788)
+  [PASS] GET /knowledge/health status=200 
+  [PASS] GET /knowledge/stats status=200 
+  [PASS] GET /knowledge/documents status=200 
+  [PASS] GET /knowledge/knowledge-bases status=200 
+  [PASS] GET /knowledge/categories status=200 
+  [PASS] POST /knowledge/search status=200 
+  [SKIP] 知识库上传/问答(写索引) 默认跳过(--kb-write 开启)
+
+## 10.记忆管理
+  [PASS] GET /api/memory/stats status=200 
+  [PASS] GET /api/memory/recent status=200 
+  [PASS] GET /api/memory/search status=200 
+  [PASS] GET /api/memory/files status=200 
+  [PASS] GET /api/memory/storage status=200 
+  [PASS] GET /api/memory/index_health status=200 
+  [PASS] GET /api/memory/agents status=200 
+  [PASS] GET /api/memory/users status=200 
+  [PASS] GET /api/memory/agents/{agent_id} status=200
+
+## 11.任务与待办
+  [FAIL] POST /api/v2/tasks 创建 task=None TimeoutError: timed out（超时=任务系统同步阻塞网关事件循环，见服务端日志）
+  [PASS] 负向: 缺 members 的任务被拒 TimeoutError: timed out
+  [FAIL] GET /api/v2/tasks 列表 status=0 TimeoutError: timed out
+  [FAIL] GET /api/tasks/stats status=0 TimeoutError: timed out
+  [FAIL] GET /api/tasks/todos status=0 TimeoutError: timed out
+  [PASS] GET /api/tasks/heartbeats status=200 
+  [PASS] GET /api/tasks/scheduled status=200 
+
+## 12.事件/计划/反思
+  [PASS] GET /api/events/recent status=200 
+  [PASS] GET /api/events/stats status=200 
+  [PASS] GET /api/events/search status=200 
+  [PASS] GET /api/plan/current status=200 
+  [PASS] GET /api/plan/list status=200 
+  [PASS] GET /api/reflections status=200 
+
+## 13.用户管理(admin)
+  [PASS] GET /api/users status=200 
+  [PASS] POST /api/users 创建临时用户 None
+  [PASS] PUT /api/users/{id} 更新 status=200
+  [PASS] 鉴权: guest 写操作被拒 
+
+## 14.WebSocket
+  [SKIP] WS chat_stream 未安装 websockets，跳过

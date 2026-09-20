@@ -1,0 +1,18 @@
+{
+  "name": "topology-manager-blackxml",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BLACKXML CIM topology parser, BLACKSVG generator, and local topology management UI.",
+  "scripts": {
+    "start": "node server.js",
+    "generate": "node tools/generate-svg.js",
+    "mcp": "node tools/mcp-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dmdb": "1.0.49630",
+    "snappyjs": "0.7.0"
+  }
+}

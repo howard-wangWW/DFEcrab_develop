@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package dfecrab;
+
+// 原始消息定义
+
+message ExecuteRequest {
+  string session_id = 1;
+  map<string, string> input_data = 2;
+  repeated string skills = 3;
+  string instruction = 4;
+  int32 timeout = 5;
+  string user_id = 6;  // 当前请求的用户（记忆按用户隔离）
+}
+
+message ExecuteResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string session_id = 3;
+  string result = 4;
+  string error = 5;
+  bool memory_updated = 6;
+  int64 execution_time_ms = 7;
+  string timestamp = 8;
+}
+
+message HealthStatus {
+  bool healthy = 1;
+  string agent_id = 2;
+  int32 session_count = 3;
+  repeated string enabled_skills = 4;
+  string timestamp = 5;
+}
+
+message HealthCheckRequest {
+  // 空消息
+}
+
+message ChatRequest {
+  string message = 1;
+  optional string session_id = 2;
+  string user_id = 3;
+}
+
+message ChatResponse {
+  bool success = 1;
+  string session_id = 2;
+  string message = 3;
+  string task_type = 4;
+  repeated string agents_used = 5;
+  string audit_log_id = 6;
+  string error = 7;
+  string timestamp = 8;
+  AgentPerfMetrics perf_metrics = 9;
+  repeated AgentPerfMetrics worker_metrics = 10;
+}
+
+message AgentPerfMetrics {
+  string agent_id = 1;
+  int64 total_duration_ms = 2;
+  int64 first_token_ms = 3;
+  int32 prompt_tokens = 4;
+  int32 completion_tokens = 5;
+  int32 total_tokens = 6;
+  double tokens_per_second = 7;
+  string timestamp = 8;
+}
+
+message ManagerHealthStatus {
+  bool healthy = 1;
+  string service = 2;
+  int32 worker_count = 3;
+  int32 session_count = 4;
+  string timestamp = 5;
+}
+
+// 新增流式响应消息
+message StreamChatResponse {
+  oneof event {
+    // 开始流式传输
+    StreamStart start = 1;
+    // 每个agent步骤完成
+    AgentStep step = 2;
+    // 最终结果
+    ChatResponse final = 3;
+    // 错误
+    StreamError error = 4;
+  }
+}
+
+message StreamStart {
+  string session_id = 1;
+}
+
+message AgentStep {
+  int32 step = 1;
+  string agent = 2;
+  string action = 3;
+  string answer = 4;
+  string timestamp = 5;
+}
+
+message StreamError {
+  string message = 1;
+}
+
+// 服务定义
+service AgentService {
+  rpc Execute (ExecuteRequest) returns (ExecuteResponse);
+  rpc Health (HealthCheckRequest) returns (HealthStatus);
+}
+
+service ManagerService {
+  rpc Chat (ChatRequest) returns (ChatResponse);
+  rpc ChatStream (ChatRequest) returns (stream StreamChatResponse);
+  rpc ManagerHealth (HealthCheckRequest) returns (ManagerHealthStatus);
+}

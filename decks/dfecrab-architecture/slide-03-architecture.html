@@ -1,0 +1,110 @@
+<div class="slide architecture">
+  <h2 class="slide-title">🏛️ 整体架构图</h2>
+  <div class="architecture-diagram">
+    <div class="layer layer-client">
+      <div class="layer-title">客户端层</div>
+      <div class="layer-items">
+        <div class="item">Web UI</div>
+        <div class="item">CLI</div>
+        <div class="item">API 调用</div>
+        <div class="item">定时任务</div>
+      </div>
+    </div>
+    <div class="arrow">↓ HTTP (6789)</div>
+    <div class="layer layer-gateway">
+      <div class="layer-title">Gateway 层</div>
+      <div class="layer-items">
+        <div class="item item-main">HTTP Server<br/><small>路由 · Session管理 · 请求增强</small></div>
+        <div class="item">Periodic Scheduler</div>
+      </div>
+    </div>
+    <div class="arrow">↓ gRPC (Zookeeper 服务发现)</div>
+    <div class="layer layer-manager">
+      <div class="layer-title">Manager Agent 层 (:50050)</div>
+      <div class="layer-items">
+        <div class="item item-main">意图识别 · 任务分流 · 工作流编排</div>
+      </div>
+    </div>
+    <div class="arrow">↓ gRPC (Zookeeper 服务发现)</div>
+    <div class="layer layer-worker">
+      <div class="layer-title">Worker Agents 层 (随机端口)</div>
+      <div class="layer-items">
+        <div class="item">📊 Analyst<br/><small>数据分析</small></div>
+        <div class="item">📝 Reporter<br/><small>报告生成</small></div>
+        <div class="item">📁 FileManager<br/><small>文件管理</small></div>
+      </div>
+    </div>
+    <div class="arrow">↓ 服务注册/发现</div>
+    <div class="layer layer-zk">
+      <div class="layer-title">Zookeeper (2181)</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.architecture {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 30px 40px;
+    color: #ffffff;
+  }
+  .slide.architecture .slide-title {
+    color: #ffffff;
+    font-size: 32px;
+    margin-bottom: 20px;
+  }
+  .architecture-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px 24px;
+    width: 100%;
+    max-width: 750px;
+  }
+  .layer-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+  .layer-client .layer-title { background: #3a86ff; }
+  .layer-gateway .layer-title { background: #8338ec; }
+  .layer-manager .layer-title { background: #ff006e; }
+  .layer-worker .layer-title { background: #fb5607; }
+  .layer-zk .layer-title { background: #ffbe0b; color: #1a1a2e; }
+  .layer-items {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .item {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    text-align: center;
+  }
+  .item-main {
+    background: rgba(255,255,255,0.15);
+    font-weight: 600;
+  }
+  .item small {
+    display: block;
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+  .arrow {
+    font-size: 14px;
+    color: #a8d8ea;
+    font-weight: 500;
+  }
+</style>

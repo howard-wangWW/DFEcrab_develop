@@ -1,0 +1,25 @@
+DFEcrab HTTP /dfecrab URL 前缀兼容验证结果
+时间: 2026-09-04 11:39:48
+网关: http://172.20.51.153:6789 | 用户: admin
+======================================================================
+[PASS ] 本地文件校验[常量] 已包含
+[PASS ] 本地文件校验[归一化函数] 已包含
+[PASS ] 本地文件校验[分发入口调用] 已包含
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[FAIL ] 健康检查 /health 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 会话列表 /api/v2/sessions 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] token 用量 /api/v2/usage/stats 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 任务 V2 /api/v2/tasks 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] Agent 列表 /api/agents 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 服务健康 /api/services 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 插件列表 /api/plugins 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 技能列表 /api/skills 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 模型列表 /api/models 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 模型容错状态 /api/fallback/status 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 记忆统计 /api/memory/stats 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] MCP 服务列表 /api/mcp/servers 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 用户管理 /api/users 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 事件统计 /api/events/stats 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 规划当前 /api/plan/current 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 任务调度统计 /api/tasks/stats 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）
+[FAIL ] 自反思列表 /api/reflections 旧=200 新=404 → 服务器仍为旧代码（未部署 server.py）

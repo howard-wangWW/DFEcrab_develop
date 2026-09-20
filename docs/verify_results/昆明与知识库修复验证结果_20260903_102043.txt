@@ -1,0 +1,18 @@
+昆明技能强制调工具 + 知识库修复 验证结果
+时间: 2026-09-03 10:20:43
+网关: http://127.0.0.1:9 | 知识库: http://127.0.0.1:9 | 用户: admin
+结果: 5/5 用例通过
+======================================================================
+[PASS ] 本地 kunming/tools.json 技能=['kunming_classifier', 'kunming_api']（theory_qa 已移除）
+[PASS ] 本地 kunming/config.json tool_choice=required
+[PASS ] 本地 kunming/config.json system_prompt 已无 theory_qa 残留
+[PASS ] 本地 skills 目录 kunming_theory_qa 技能目录已删除
+[PASS ] 本地 classifier/_meta.json category 默认=5（其他对话），无理论题
+[PASS ] 本地 classifier/execute.py 无 theory_qa/类别14/route 代码残留
+[PASS ] 切片尾块合并 短尾块已并入前一片（不再丢弃）
+[PASS ] 本地 docx 深度解析 DFEcrab知识库接口文档.docx → 字符=6899 图片=0
+[PASS ] 知识库路径锚定 PROJECT_ROOT=D:\python\python\ai\DFEcrab_kunming\DFEcrab_yt\DFEcrab
+[INFO ] 索引目录 INDEX_DIR=D:\python\python\ai\DFEcrab_kunming\DFEcrab_yt\DFEcrab\knowledge_base\index exists=True
+[PASS ] 配置 gateway.yaml knowledge.upload_max_mb=50MB
+[FAIL ] 网关连通性 GET /api/v2/sessions -> 0
+[FAIL ] 知识库连通性 GET /knowledge/health -> 0

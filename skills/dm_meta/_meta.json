@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "author": "DFEcrab Team",
+  "description": "达梦数据库元数据查询技能，获取表结构、列信息及示例数据",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "web-fetch",
+  "description": "抓取网页内容，提取标题和正文",
+  "version": "1.0.0",
+  "author": "DFEcrab",
+  "parameters": {
+    "url": {
+      "type": "string",
+      "description": "要抓取的网页 URL",
+      "required": true
+    },
+    "extract_links": {
+      "type": "boolean",
+      "description": "是否提取页面链接",
+      "default": false
+    },
+    "max_length": {
+      "type": "integer",
+      "description": "内容最大长度限制",
+      "default": 10000
+    }
+  }
+}

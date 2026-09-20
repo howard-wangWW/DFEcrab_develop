@@ -1,0 +1,108 @@
+<div class="slide llm">
+  <h2 class="slide-title">🧠 大模型集成</h2>
+  <div class="llm-content">
+    <div class="llm-arch">
+      <div class="llm-box">
+        <h3>Agent Service</h3>
+        <p>reporter_agent 调用</p>
+      </div>
+      <div class="llm-arrow">HTTP POST →</div>
+      <div class="llm-box highlight">
+        <h3>llama.cpp server</h3>
+        <p>192.168.1.150:4096</p>
+      </div>
+      <div class="llm-arrow">推理 →</div>
+      <div class="llm-box">
+        <h3>Qwen3-Coder-30B</h3>
+        <p>4bit 量化</p>
+      </div>
+    </div>
+    <div class="llm-features">
+      <div class="llm-card">
+        <h3>📝 上下文传递</h3>
+        <p>完整 Session 历史传递给大模型，让模型理解上下文</p>
+      </div>
+      <div class="llm-card">
+        <h3>🎯 智能判断</h3>
+        <p>由大模型理解用户意图，而非写死规则</p>
+      </div>
+      <div class="llm-card">
+        <h3>⚡ Fallback 机制</h3>
+        <p>大模型调用失败时，使用简单规则兜底</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.llm {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.llm .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .llm-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+  }
+  .llm-arch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .llm-box {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .llm-box.highlight {
+    background: linear-gradient(135deg, #3a86ff, #8338ec);
+    color: #fff;
+  }
+  .llm-box h3 {
+    font-size: 18px;
+    margin: 0 0 4px 0;
+  }
+  .llm-box p {
+    font-size: 14px;
+    margin: 0;
+    color: #6c757d;
+  }
+  .llm-box.highlight p {
+    color: rgba(255,255,255,0.8);
+  }
+  .llm-arrow {
+    font-size: 16px;
+    color: #3a86ff;
+    font-weight: 600;
+  }
+  .llm-features {
+    display: flex;
+    gap: 15px;
+  }
+  .llm-card {
+    flex: 1;
+    background: #f0f7ff;
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .llm-card h3 {
+    font-size: 16px;
+    margin: 0 0 6px 0;
+    color: #203a43;
+  }
+  .llm-card p {
+    font-size: 13px;
+    margin: 0;
+    color: #495057;
+    line-height: 1.5;
+  }
+</style>

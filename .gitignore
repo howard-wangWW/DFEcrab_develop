@@ -1,0 +1,70 @@
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+runs/
+src/logs/agentscope/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# Mac
+.DS_Store
+
+# ===== 2026-09-20 补充：运行时数据与大文件 =====
+# 运行时状态（会话/记忆/用量事件/任务存储）
+data/
+nohup.out
+.env
+
+# 模型权重（体积过大，离线另行分发）
+models/
+runtime/bin/
+
+# 业务数据库 / 网格数据 / 缓存
+*.sqlite
+*.sqlite3
+*.db-journal
+mcp_servers/blackxml-topology-mcp/用户列表索引/
+mcp_servers/blackxml-topology-mcp/.cache/
+mcp_servers/blackxml-topology-mcp/*.DAT
+
+# Node / macOS / 编辑器
+node_modules/
+.DS_Store
+
+# DRM 透明加密的企业受控文件：git 无读取权限，且禁止外传
+src/agent/loop.py
+src/agent/multi/reflector.py

@@ -1,0 +1,39 @@
+# DFEcrab Gateway 配置
+# 多智能体协同系统 - gRPC架构
+
+# Gateway配置
+gateway:
+  host: 0.0.0.0
+  port: 6789
+  ws_port: 6790
+
+# 昆明Zookeeper配置 
+#zookeeper:
+  #hosts: 192.168.113.15:2181
+  #namespace: dfecrab
+
+# Zookeeper配置
+zookeeper:
+  hosts: 172.20.42.72:2181
+  namespace: dfecrab
+
+# 本地服务端口统一管理（单一事实源）
+# 各启动脚本 / MCP 脚本应从这里读取，避免硬编码漂移
+local_ports:
+  knowledge_api: 6788
+  mcp:
+    demo: 8600
+    alert_judge_tools: 8601
+    blackxml_topology: 8602
+
+# 知识库服务配置
+knowledge:
+  # 单文件上传上限（MB），默认 50
+  upload_max_mb: 50
+  # 切片参数（多现场可按现场覆盖；与嵌入模型窗口对齐：bge-small-zh-v1.5 上限 512 token）
+  chunk_size: 450            # 单切片目标长度（中文字符）
+  chunk_overlap: 90          # 相邻切片重叠长度
+  min_chunk_size: 50         # 单切片最小长度（更短的并入相邻片）
+  table_rows_per_chunk: 20   # Excel/表格类文档每片数据行数（表头继承）
+  qa_pair_keep: true         # 问答体文档：问答对尽量不被拆散
+  filter_overfetch: 6        # 按分类检索时的超采倍数（FAISS 无原生元数据过滤，先超采再过滤）

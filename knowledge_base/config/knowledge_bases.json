@@ -1,0 +1,18 @@
+{
+  "kb_7e591e1a": {
+    "kb_id": "kb_7e591e1a",
+    "name": "电网规程库",
+    "description": "调度规程",
+    "category": "power_grid",
+    "created_at": "2026-08-27T15:18:07.624251",
+    "updated_at": "2026-08-27T15:18:07.624269"
+  },
+  "default": {
+    "kb_id": "default",
+    "name": "默认知识库",
+    "description": "",
+    "category": "other",
+    "created_at": "2026-08-27T15:33:02.333516",
+    "updated_at": "2026-08-27T15:33:02.333542"
+  }
+}

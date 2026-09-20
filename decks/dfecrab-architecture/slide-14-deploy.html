@@ -1,0 +1,130 @@
+<div class="slide deploy">
+  <h2 class="slide-title">🚀 部署架构</h2>
+  <div class="deploy-content">
+    <div class="deploy-requirements">
+      <h3>环境要求</h3>
+      <div class="req-grid">
+        <div class="req-card">
+          <div class="req-icon">🐍</div>
+          <h4>Python 3.10+</h4>
+        </div>
+        <div class="req-card">
+          <div class="req-icon">🔍</div>
+          <h4>Zookeeper 3.8+</h4>
+          <p>端口 2181</p>
+        </div>
+        <div class="req-card">
+          <div class="req-icon">🧠</div>
+          <h4>llama.cpp server</h4>
+          <p>192.168.1.150:4096</p>
+        </div>
+      </div>
+    </div>
+    <div class="deploy-steps">
+      <h3>启动流程</h3>
+      <div class="steps-flow">
+        <div class="step-card">1️⃣ 启动 Zookeeper</div>
+        <div class="step-arrow">→</div>
+        <div class="step-card">2️⃣ 启动 Worker Agents</div>
+        <div class="step-arrow">→</div>
+        <div class="step-card">3️⃣ 启动 Manager Agent</div>
+        <div class="step-arrow">→</div>
+        <div class="step-card">4️⃣ 启动 Gateway</div>
+      </div>
+    </div>
+    <div class="deploy-ports">
+      <h3>端口分配</h3>
+      <div class="ports-table">
+        <div class="port-row"><span class="port-name">Gateway HTTP</span><span class="port-num">6789</span></div>
+        <div class="port-row"><span class="port-name">Manager gRPC</span><span class="port-num">50050</span></div>
+        <div class="port-row"><span class="port-name">Worker Agents</span><span class="port-num">随机</span></div>
+        <div class="port-row"><span class="port-name">Zookeeper</span><span class="port-num">2181</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.deploy {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 35px 40px;
+    color: #ffffff;
+  }
+  .slide.deploy .slide-title {
+    color: #ffffff;
+    font-size: 32px;
+    margin-bottom: 20px;
+  }
+  .deploy-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .deploy-requirements h3, .deploy-steps h3, .deploy-ports h3 {
+    font-size: 20px;
+    color: #a8d8ea;
+    margin: 0 0 10px 0;
+  }
+  .req-grid {
+    display: flex;
+    gap: 12px;
+  }
+  .req-card {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .req-icon {
+    font-size: 32px;
+    margin-bottom: 6px;
+  }
+  .req-card h4 {
+    font-size: 16px;
+    margin: 0 0 4px 0;
+  }
+  .req-card p {
+    font-size: 13px;
+    margin: 0;
+    color: rgba(255,255,255,0.6);
+  }
+  .steps-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-card {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .step-arrow {
+    font-size: 18px;
+    color: #06d6a0;
+  }
+  .ports-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .port-row {
+    display: flex;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.05);
+    padding: 8px 14px;
+    border-radius: 6px;
+  }
+  .port-name {
+    font-size: 14px;
+    color: rgba(255,255,255,0.8);
+  }
+  .port-num {
+    font-size: 14px;
+    font-weight: 600;
+    color: #06d6a0;
+  }
+</style>

@@ -1,0 +1,22 @@
+{
+  "roles": {
+    "admin": {
+      "level": "write",
+      "data_scope": "all"
+    },
+    "user": {
+      "level": "write",
+      "data_scope": "own"
+    },
+    "guest": {
+      "level": "read",
+      "data_scope": "own"
+    }
+  },
+  "users": {
+    "admin": "admin",
+    "alice": "user",
+    "test": "guest"
+  },
+  "default_role": "guest"
+}

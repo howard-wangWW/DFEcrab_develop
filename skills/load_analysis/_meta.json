@@ -1,0 +1,10 @@
+{
+    "name": "load_analysis",
+    "version": "1.0.0",
+    "description": "分析电网负载率，分类并排序",
+    "author": "DFEcrab Team",
+    "parameters": {
+        "type": "object",
+        "properties": {}
+    }
+}

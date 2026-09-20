@@ -1,0 +1,86 @@
+<div class="slide code">
+  <h2 class="slide-title">💻 关键代码示例</h2>
+  <div class="code-content">
+    <div class="code-section">
+      <h3>Session 管理（Gateway）</h3>
+      <pre class="code-block">
+# 获取或创建 Session
+session = session_mgr.get_or_create_session(
+    session_id=session_id,
+    user_id=user_id,
+    client_type=ClientType.API
+)
+
+# 保存用户消息
+session_mgr.add_message(session.id, "user", message)
+
+# 构建增强消息（含上下文）
+enhanced = self._build_enhanced_message(
+    message=message,
+    session_id=session.id,
+    session_summary=session_summary,
+    session_history=session_history
+)
+
+# gRPC 调用 Manager
+response = stub.Chat(grpc_request, timeout=120.0)
+
+# 保存 AI 响应
+session_mgr.add_message(session.id, "assistant", response.message)
+session_mgr.save_session(session.id)</pre>
+    </div>
+    <div class="code-section">
+      <h3>Agent 调用大模型</h3>
+      <pre class="code-block">
+# llama.cpp server (OpenAI 兼容 API)
+llm_url = "http://192.168.1.150:4096/v1/chat/completions"
+
+payload = {
+    "model": model_name,
+    "messages": [
+        {"role": "user", "content": prompt}  # 完整上下文
+    ],
+    "stream": False,
+    "temperature": 0.7
+}
+
+response = requests.post(llm_url, json=payload, timeout=60)
+generated_content = response.json()["choices"][0]["message"]["content"]</pre>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.code {
+    background: #0d1117;
+    padding: 35px 40px;
+    color: #c9d1d9;
+  }
+  .slide.code .slide-title {
+    color: #ffffff;
+    font-size: 32px;
+    margin-bottom: 20px;
+  }
+  .code-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .code-section h3 {
+    font-size: 18px;
+    color: #a8d8ea;
+    margin: 0 0 10px 0;
+  }
+  .code-block {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: #7ee787;
+    overflow-x: auto;
+    line-height: 1.6;
+    margin: 0;
+  }
+</style>

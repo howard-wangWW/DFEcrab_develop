@@ -1,0 +1,30 @@
+昆明技能强制调工具 + 知识库修复 验证结果
+时间: 2026-09-03 10:18:45
+网关: http://172.20.51.153:6789 | 知识库: http://172.20.51.153:6788 | 用户: admin
+结果: 7/11 用例通过
+======================================================================
+[PASS ] 本地 kunming/tools.json 技能=['kunming_classifier', 'kunming_api']（theory_qa 已移除）
+[PASS ] 本地 kunming/config.json tool_choice=required
+[PASS ] 本地 kunming/config.json system_prompt 已无 theory_qa 残留
+[PASS ] 本地 skills 目录 kunming_theory_qa 技能目录已删除
+[PASS ] 本地 classifier/_meta.json category 默认=5（其他对话），无理论题
+[FAIL ] 本地 classifier/execute.py 仍引用 theory_qa / 类别14 / route 字段
+[FAIL ] 切片尾块合并 执行异常: No module named 'src'
+[FAIL ] 本地 docx 深度解析 执行异常: No module named 'src'
+[FAIL ] 知识库路径锚定 导入失败: No module named 'src'
+[PASS ] 配置 gateway.yaml knowledge.upload_max_mb=50MB
+[PASS ] 网关连通性 GET /api/v2/sessions -> 200
+[PASS ] 知识库连通性 GET /knowledge/health -> 200
+[PASS ] 网关 Agent列表 agents=['alert_judge', 'code_writer', 'dfecrab', 'knowledge_agent', 'kunming', 'manager_agent']
+[PASS ] kunming 技能调用 tool_call 链路完整: ['kunming_classifier', 'kunming_api']
+[PASS ] KB 健康检查 /knowledge/health -> 200
+[PASS ] KB 统计信息 /knowledge/stats -> 200
+[PASS ] KB 文档列表 /knowledge/documents -> 200
+[PASS ] KB 分类列表 /knowledge/categories -> 200
+[PASS ] KB 检索 search total=2
+[PASS ] KB 问答 chat status=success（error=未命中也属正常链路）
+[PASS ] KB 上传 doc_id=operation_manual_a61275f7ce31f592 chunk_count=1 image_count=-1
+[PASS ] KB 索引热刷新 上传后立即检索到唯一标记（无需重启），total=2
+[INFO ] KB 上传上限(413) 默认跳过（网络重负载），开启方式: --big-file
+[INFO ] 清理测试文档 operation_manual_a61275f7ce31f592 -> 200
+[INFO ] 清理测试会话 km_verify_101540 -> 200

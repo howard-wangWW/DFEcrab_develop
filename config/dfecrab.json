@@ -1,0 +1,197 @@
+{
+  "model_providers": {
+    "qwen3_a3b": {
+      "provider": "openai_compatible",
+      "model_name": "Qwen3_A3B_30B",
+      "model_type": "openai_chat",
+      "config_name": "qwen3_a3b",
+      "api_base": "http://192.168.113.22:8092/v1",
+      "enabled": false,
+      "timeout": 300,
+      "temperature": 0.7,
+      "max_tokens": 4096,
+      "context_length": 8192,
+      "enable_thinking": false
+    },
+    "qwen3_32b": {
+      "provider": "openai_compatible",
+      "model_name": "Qwen3-32B",
+      "model_type": "openai_chat",
+      "config_name": "qwen3_32b",
+      "api_base": "http://172.20.51.124:8104/v1",
+      "enabled": false,
+      "timeout": 300,
+      "temperature": 0.7,
+      "max_tokens": 4096,
+      "context_length": 8192
+    },
+    "qwen3_32b_q4": {
+      "provider": "openai_compatible",
+      "model_name": "Qwen3-32B-Q4-K-M",
+      "model_type": "openai_chat",
+      "config_name": "qwen3_32b_q4",
+      "api_base": "http://172.20.41.86:8089/v1",
+      "enabled": true,
+      "timeout": 300,
+      "temperature": 0.7,
+      "max_tokens": 8192,
+      "context_length": 32768
+    }
+  },
+  "think_config": {
+    "start_tags": [
+      "<think>",
+      "<thinking>"
+    ],
+    "end_tags": [
+      "</thinking>",
+      "</think>"
+    ],
+    "reasoning_fields": [
+      "reasoning_content",
+      "reasoning"
+    ],
+    "max_tag_len": 20
+  },
+  "agent_defaults": {
+    "max_iterations": 8,
+    "llm_timeout": 180,
+    "tool_choice": "auto"
+  },
+  "default_agent": {
+    "agent_id": "dfecrab",
+    "_note": "平台默认助手（全局唯一，多现场随部署文件差异化）：对话页新建会话默认预选并高亮，请求自动带该 agent_id；PUT /api/agents/{id}/default 设置即自动清旧默认；取消/删除默认 agent 自动回退 dfecrab（现网兜底行为不变）"
+  },
+  "react": {
+    "max_tool_result_chars": 12000,
+    "tool_result_budget_ratio": 0.25,
+    "tool_round_budget_ratio": 0.4,
+    "context_msg_limit": 16,
+    "auto_compact_threshold": 0.85,
+    "compact_keep_recent": 2,
+    "deferred_tools": false,
+    "deferred_keep": 15,
+    "answer_gate": true,
+    "answer_gate_max_retry": 1,
+    "answer_gate_timeout": 60,
+    "markdown_output_hint": true,
+    "plan_mode": "off",
+    "scratchpad": true,
+    "scratchpad_max_chars": 1500,
+    "param_guard": true,
+    "confirm_exempt_prefixes": [
+      "kunming_",
+      "knowledge_"
+    ],
+    "direct_answer_tools": [
+      "kunming_api"
+    ],
+    "_note": {
+      "max_tool_result_chars": "单条工具结果回填上限（字符），超长时语义截断（兜底值）",
+      "tool_result_budget_ratio": "单条工具结果预算 = 窗口 × 比例（按 context_length 多现场自适应）",
+      "tool_round_budget_ratio": "单轮工具结果累计预算 = 窗口 × 比例（事前配额）",
+      "context_msg_limit": "传给模型的上下文消息条数上限（保锚点裁剪，system 与首条任务不丢）",
+      "auto_compact_threshold": "ReAct 内 AutoCompact 触发阈值（已用 token / 窗口）",
+      "compact_keep_recent": "AutoCompact 后保留的最近轮数",
+      "deferred_tools": "工具按意图剪枝开关（对标 LibreChat deferred_tools，默认关）",
+      "deferred_keep": "deferred_tools 剪枝后保留的工具数",
+      "answer_gate": "最终回复语义验证门控开关（Assessor.verify，零关键词、纯 LLM 判定）",
+      "answer_gate_max_retry": "门控未通过时最多带反馈重试次数（防死循环）",
+      "answer_gate_timeout": "单次门控验证超时（秒），超时默认放行",
+      "markdown_output_hint": "是否注入通用 Markdown 输出要求（前端按 GFM 渲染时按现场开启；默认关）",
+      "plan_mode": "Plan 执行器开关（批次10：complex intent 已退役）：off=恒不拆步（默认，复杂任务由 task 工具循环消化）；explicit=仅请求体 use_plan:true 时启用（预留计划确认/多智能体编排底座）",
+      "scratchpad": "ReAct 进展便签开关（批次11-C2，对标 Claude Code scratchpad）：每轮工具调用后维护一条『已执行轮次+定位参数+状态』的 system 摘要，供模型接续不重述任务；零关键词、纯程序化摘要",
+      "scratchpad_max_chars": "便签总长度上限（字符），超长保留最近轮次",
+      "param_guard": "工具参数护栏（弱模型参数填充兜底）：执行前纯规则校验，参数错/缺且代码能从用户原话确定性推导时自动修复；强模型现场参数全过则零干预（修复率见 [ParamGuard] 日志）。实现：src/skill/param_guard.py + src/skill/extractors/",
+      "confirm_exempt_prefixes": "失败工具免人工确认的工具名前缀（查询/读类）：命中时错误直接回填给模型重试，不弹确认等 30s（原逻辑对失败工具一律确认，前端未实现确认 UI 时会静默等满超时）",
+      "direct_answer_tools": "直答工具（弱模型收尾轮不可靠时的确定性输出）：命中工具成功返回后，直接把数据作为 message 输出并结束循环，不再让模型组织第二轮回答；仅对列表内工具生效（如昆明 kunming_api），其它智能体/工具流程不变"
+    }
+  },
+  "mcp": {
+    "max_tools_per_agent": 30,
+    "exclude_write_tools": true,
+    "reserved_bindings": {
+      "alert_judge_tools": [
+        "alert_judge"
+      ]
+    },
+    "_note": {
+      "max_tools_per_agent": "单次装配的 MCP 工具总数上限，超过则整组不注入（fail-safe）",
+      "exclude_write_tools": "默认不下发写工具（schema 驱动判定：required 含 confirm 或 confirm.enum 含 APPLY）；做数据更新类对话时置 false",
+      "reserved_bindings": "保留绑定规则（key=服务名，value=允许绑定的智能体列表）：智能体侧保存绑定时，规则外的智能体绑定该服务会被拒绝——防止 alert_judge_tools 被误绑到普通智能体而触发 alert_judge 专属研判链路"
+    }
+  },
+  "identity": {
+    "default_user_id": "default",
+    "warn_missing_user_id": true,
+    "warn_missing_interval_s": 300,
+    "_note": {
+      "default_user_id": "请求未携带任何 user_id（HTTP X-User-Id 头 / WS 认证 / 请求体均缺失）时的回落用户；多用户现场请前端必传 user_id，否则会话与记忆按该默认用户隔离",
+      "warn_missing_user_id": "缺失 user_id 时是否打 WARNING（按来源限频，便于前端/集成方发现漏传）",
+      "warn_missing_interval_s": "同一来源（ws/chat、http/chat 等）两次缺失告警的最小间隔秒数，防刷屏"
+    }
+  },
+  "cache": {
+    "agents_list_ttl_s": 1.5,
+    "_note": {
+      "agents_list_ttl_s": "GET /api/agents 结果进程内 TTL（秒）：TTL 内直接返回缓存，避免每次请求重扫 agents/ 目录与 ZK；失效后自动重建，保证状态新鲜度与二次访问 <10ms"
+    }
+  },
+  "file_upload": {
+    "max_file_size_mb": 10,
+    "max_files_per_session": 5,
+    "allowed_extensions": [
+      ".txt",
+      ".md",
+      ".log",
+      ".csv",
+      ".xlsx"
+    ],
+    "budget_ratio": 0.5,
+    "summary_rows": 10,
+    "max_xlsx_sheets": 10,
+    "cleanup_ttl_days": 30,
+    "cleanup_interval_s": 3600,
+    "_note": {
+      "max_file_size_mb": "单个附件大小上限（MB），超限忽略并提示",
+      "max_files_per_session": "单会话附件数量上限，超限要求先删除再上传（file_handler 上传校验引用；批次12步骤4由阶段1遗留键 max_attachments_per_message 改名对齐）",
+      "allowed_extensions": "允许的扩展名白名单（参数而非判定逻辑；txt/md/log/csv 用标准库解析，xlsx 需 openpyxl）",
+      "budget_ratio": "附件注入总预算 = 当前模型 context_length × 比例（多现场自适应：昆明16K/烟台32K/深圳100K+ 同一代码；超预算截断/降级为列名摘要）",
+      "summary_rows": "csv 前 N 行预览行数（与 xlsx 逐 sheet 预览共用）",
+      "max_xlsx_sheets": "xlsx 最多展示的 sheet 数",
+      "cleanup_ttl_days": "孤儿附件 TTL（天）：status=deleted 记录、超期记录、注册表无记录的落盘文件，超过该时限由后台清理协程回收",
+      "cleanup_interval_s": "孤儿清理协程运行间隔（秒），默认 1 小时扫一次（清理仅处理已超 TTL 的孤儿，不影响 active 附件）"
+    }
+  },
+  "image_providers": {
+    "default": {
+      "provider": "openai_compatible",
+      "model": "",
+      "api_base": "",
+      "api_key": "",
+      "enabled": false,
+      "size": "1024x1024",
+      "timeout": 180,
+      "_note": "图片生成服务（OpenAI 兼容 POST /images/generations）：enabled=true 且填好 api_base/model 后，POST /api/images/generate 与 image_gen 技能即可用；与 model_providers 完全独立，避免图像模型被误判为对话模型"
+    }
+  },
+  "image_generation": {
+    "output_dir": "data/images",
+    "default_n": 1,
+    "max_n": 4,
+    "allowed_sizes": [
+      "512x512",
+      "768x768",
+      "1024x1024",
+      "1024x1536",
+      "1536x1024"
+    ],
+    "timeout": 180,
+    "_note": {
+      "output_dir": "图片落盘根目录（相对项目根或绝对路径）：按天分子目录 YYYY-MM-DD/，元数据追加写 index.jsonl",
+      "max_n": "单次请求最大生成张数（超出自动截断）；default_n 为不传 n 时的默认值",
+      "allowed_sizes": "允许的尺寸白名单：传入非白名单值自动回落到 provider.size 或首个白名单值",
+      "timeout": "单次图片生成 HTTP 超时（秒）；provider 级 timeout 优先"
+    }
+  }
+}

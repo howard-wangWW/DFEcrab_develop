@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFEcrab SSE 流式输出测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .output {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .output-title {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .status.streaming {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.complete {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .output-content {
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: #667eea;
+            animation: blink 1s infinite;
+            vertical-align: text-bottom;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .stats {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 DFEcrab SSE 流式输出测试</h1>
+        <p class="subtitle">测试 Server-Sent Events 实时流式输出功能</p>
+        
+        <div class="input-group">
+            <label for="agentId">Agent ID</label>
+            <input type="text" id="agentId" value="default" placeholder="default">
+        </div>
+        
+        <div class="input-group">
+            <label for="message">消息</label>
+            <textarea id="message" placeholder="输入测试消息...">你好，请简单介绍一下你自己</textarea>
+        </div>
+        
+        <button id="sendBtn" onclick="sendRequest()">发送请求</button>
+        
+        <div class="output">
+            <div class="output-header">
+                <span class="output-title">响应输出</span>
+                <span id="status" class="status">等待中</span>
+            </div>
+            <div id="outputContent" class="output-content">
+                <span style="color: #999;">点击"发送请求"开始测试...</span>
+            </div>
+            <div id="stats" class="stats" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let fullResponse = '';
+        let chunkCount = 0;
+        let startTime = null;
+
+        async function sendRequest() {
+            const agentId = document.getElementById('agentId').value;
+            const message = document.getElementById('message').value;
+            
+            if (!message.trim()) {
+                alert('请输入消息');
+                return;
+            }
+
+            // 重置状态
+            fullResponse = '';
+            chunkCount = 0;
+            startTime = Date.now();
+            
+            const btn = document.getElementById('sendBtn');
+            const outputContent = document.getElementById('outputContent');
+            const status = document.getElementById('status');
+            const stats = document.getElementById('stats');
+            
+            btn.disabled = true;
+            btn.textContent = '流式传输中...';
+            outputContent.innerHTML = '<span style="color: #999;">连接中...</span>';
+            status.className = 'status streaming';
+            status.textContent = '流式中';
+            stats.style.display = 'none';
+
+            try {
+                // 使用 fetch + ReadableStream（比 EventSource 更灵活）
+                const response = await fetch('/api/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ agent_id: agentId, message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                outputContent.innerHTML = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        break;
+                    }
+
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // 解析 SSE 事件
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // 保留最后一个不完整的行
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.slice(6);
+                            try {
+                                const event = JSON.parse(dataStr);
+                                
+                                if (event.type === 'message') {
+                                    const content = event.data.content;
+                                    fullResponse += content;
+                                    chunkCount++;
+                                    outputContent.innerHTML = fullResponse + '<span class="cursor"></span>';
+                                    // 自动滚动到底部
+                                    outputContent.parentElement.scrollTop = outputContent.parentElement.scrollHeight;
+                                } else if (event.type === 'message_end') {
+                                    status.className = 'status complete';
+                                    status.textContent = '完成';
+                                    
+                                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+                                    stats.style.display = 'block';
+                                    stats.innerHTML = `
+                                        <strong>统计信息</strong><br>
+                                        Chunk 数量: ${chunkCount}<br>
+                                        响应长度: ${fullResponse.length} 字符<br>
+                                        耗时: ${elapsed} 秒
+                                    `;
+                                } else if (event.type === 'error') {
+                                    status.className = 'status error';
+                                    status.textContent = '错误';
+                                    outputContent.innerHTML = `<span style="color: red;">错误: ${event.data.message}</span>`;
+                                }
+                            } catch (e) {
+                                console.error('解析 SSE 数据失败:', e, dataStr);
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = '错误';
+                outputContent.innerHTML = `<span style="color: red;">请求失败: ${error.message}</span>`;
+                console.error('SSE 请求失败:', error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '发送请求';
+            }
+        }
+
+        // 支持回车键发送
+        document.getElementById('message').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendRequest();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "@dfecrab/tui",
+  "version": "4.1.0",
+  "description": "DFEcrab TUI - Terminal UI based on Ink (TypeScript)",
+  "type": "module",
+  "bin": {
+    "dfecrab-tui": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "prestart": "npm run build",
+    "test": "node test-full.js",
+    "test:ws": "node test-simple.js"
+  },
+  "dependencies": {
+    "ink": "^4.4.1",
+    "react": "^18.2.0",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.39",
+    "@types/ws": "^8.5.10",
+    "@types/ink": "^4.0.2",
+    "typescript": "^5.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

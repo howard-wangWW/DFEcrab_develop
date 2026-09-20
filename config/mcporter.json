@@ -1,0 +1,882 @@
+{
+  "mcpServers": {
+    "demo": {
+      "baseUrl": "http://127.0.0.1:8600/mcp",
+      "transport": "streamable_http",
+      "headers": {},
+      "tool_cache": [
+        {
+          "function_name": "add",
+          "tool_name": "add",
+          "description": "Add two numbers together",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "a": {
+                "type": "integer"
+              },
+              "b": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "a",
+              "b"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "function_name": "get_current_time",
+          "tool_name": "get_current_time",
+          "description": "Get current time",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          }
+        },
+        {
+          "function_name": "echo",
+          "tool_name": "echo",
+          "description": "Echo a message",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "function_name": "multiply",
+          "tool_name": "multiply",
+          "description": "Multiply two numbers",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "a": {
+                "type": "integer"
+              },
+              "b": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "a",
+              "b"
+            ],
+            "type": "object"
+          }
+        }
+      ],
+      "enabled": true,
+      "bound_agents": [
+        "alert_judge",
+        "dfecrab"
+      ]
+    },
+    "alert_judge_tools": {
+      "baseUrl": "http://127.0.0.1:8601/mcp",
+      "transport": "streamable_http",
+      "headers": {},
+      "tool_cache": [
+        {
+          "function_name": "search_taizhang",
+          "tool_name": "search_taizhang",
+          "description": "æ¥è¯¢ç«ç¹å°è´¦ä¿¡æ¯ã",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "station": {
+                "type": "string"
+              },
+              "line_name": {
+                "default": "",
+                "type": "string"
+              },
+              "bus_name": {
+                "default": "",
+                "type": "string"
+              }
+            },
+            "required": [
+              "station"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "function_name": "search_diaodulog",
+          "tool_name": "search_diaodulog",
+          "description": "æ ¹æ®ä¿¡å·æ¥æãç«ç¹åç§°ï¼æç´¢è°åº¦æ¥å¿ã",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "station": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "date",
+              "station"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "function_name": "search_caozuotickets",
+          "tool_name": "search_caozuotickets",
+          "description": "æ¥è¯¢æä½ç¥¨ä¿¡æ¯ãæ¯æåæ¡ station/line_name åæ°ï¼ä¹æ¯ææ¹é queries åæ°ã",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "station": {
+                "default": "",
+                "type": "string"
+              },
+              "line_name": {
+                "default": "",
+                "type": "string"
+              },
+              "queries": {
+                "default": null,
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "function_name": "search_livework_ticket",
+          "tool_name": "search_livework_ticket",
+          "description": "æ¥è¯¢å¸¦çµä½ä¸å·¥åä¿¡æ¯ã",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "station": {
+                "type": "string"
+              },
+              "line_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "station",
+              "line_name"
+            ],
+            "type": "object"
+          }
+        }
+      ],
+      "enabled": true,
+      "bound_agents": [
+        "alert_judge"
+      ]
+    },
+    "blackxml_topology": {
+      "baseUrl": "http://127.0.0.1:8602/mcp",
+      "transport": "streamable_http",
+      "headers": {},
+      "tool_cache": [
+        {
+          "function_name": "search_feeders",
+          "tool_name": "search_feeders",
+          "description": "搜索馈线。支持按变电站、F编号、线路名或任意关键词检索 BLACKXML 索引。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词，例如：宝安站、宝城宝安变电站。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线编号或名称，例如：F21、21、F21宝润线。"
+              },
+              "query": {
+                "type": "string",
+                "description": "任意关键词，会匹配展示名、文件名、站名、线路名。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回数量，默认 20，最大 200。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "get_feeder_topology",
+          "tool_name": "get_feeder_topology",
+          "description": "查询某条馈线的拓扑结构，包含电源、图模文本、开关状态、电流、联络点和统计信息。仅当DAT中存在与图模设备ID匹配的测点时返回该开关电流。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。已知文件时优先使用。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "summary",
+                  "json"
+                ],
+                "description": "返回格式，默认 text。"
+              },
+              "switchStates": {
+                "type": "object",
+                "description": "模拟开关状态覆盖，键为开关ID，值 true=合、false=分。"
+              },
+              "related": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "primary",
+                  "all"
+                ],
+                "description": "关联图模加载模式，默认 auto。"
+              },
+              "maxRelated": {
+                "type": "number",
+                "description": "最多关联 XML 数量，默认 64。"
+              },
+              "maxNodes": {
+                "type": "number",
+                "description": "布局最多节点数，默认 900。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "json/summary 列表返回上限。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "get_cabinet_topology",
+          "tool_name": "get_cabinet_topology",
+          "description": "查询某个环网柜/开关柜在馈线中的局部拓扑，返回柜内开关状态和相邻开关/柜。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "cabinet": {
+                "type": "string",
+                "description": "环网柜或开关柜名称关键词。"
+              },
+              "file": {
+                "type": "string",
+                "description": "可选，BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "可选，馈线 F 编号或线路名。"
+              },
+              "switchStates": {
+                "type": "object",
+                "description": "模拟开关状态覆盖。"
+              },
+              "radius": {
+                "type": "number",
+                "description": "邻接层级，默认 1，最大 3。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回邻接设备数量上限。"
+              }
+            },
+            "required": [
+              "cabinet"
+            ]
+          }
+        },
+        {
+          "function_name": "search_devices",
+          "tool_name": "search_devices",
+          "description": "在全库或指定馈线内搜索柜子、开关、变压器、线路设备；匹配到DAT测点的开关会返回current电流对象。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "设备、柜子、开关号、ID 或名称关键词。"
+              },
+              "file": {
+                "type": "string",
+                "description": "可选，限定 BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，限定变电站。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "可选，限定馈线。"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "all",
+                  "cabinet",
+                  "switch",
+                  "transformer",
+                  "equipment"
+                ],
+                "description": "设备类型过滤，默认 all。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回数量，默认 30。"
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        },
+        {
+          "function_name": "assess_switch_operation",
+          "tool_name": "assess_switch_operation",
+          "description": "评估单个开关合上/断开后的停电、复电、合环影响，包含影响变压器和用户摘要。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "switch": {
+                "type": "string",
+                "description": "开关ID、开关号、柜名+开关号或名称关键词。"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "close",
+                  "toggle",
+                  "分",
+                  "合",
+                  "断开",
+                  "合上"
+                ],
+                "description": "操作类型。"
+              },
+              "switchStates": {
+                "type": "object",
+                "description": "操作前已有的模拟状态覆盖。"
+              },
+              "includeUsers": {
+                "type": "boolean",
+                "description": "是否查询影响用户，默认 true。"
+              },
+              "userLimit": {
+                "type": "number",
+                "description": "用户明细上限，默认 200。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "设备列表上限，默认 50。"
+              }
+            },
+            "required": [
+              "switch",
+              "action"
+            ]
+          }
+        },
+        {
+          "function_name": "simulate_operations",
+          "tool_name": "simulate_operations",
+          "description": "按顺序模拟多个开关操作，适合大模型做操作票/仿真推演。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "operations": {
+                "type": "array",
+                "description": "操作序列。",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "switch": {
+                      "type": "string",
+                      "description": "开关ID、开关号、柜名+开关号或名称关键词。"
+                    },
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "close",
+                        "toggle",
+                        "分",
+                        "合",
+                        "断开",
+                        "合上"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "switch",
+                    "action"
+                  ]
+                }
+              },
+              "switchStates": {
+                "type": "object",
+                "description": "操作前已有的模拟状态覆盖。"
+              },
+              "includeUsers": {
+                "type": "boolean",
+                "description": "是否查询最终影响用户，默认 true。"
+              },
+              "userLimit": {
+                "type": "number",
+                "description": "用户明细上限，默认 200。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "设备列表上限，默认 50。"
+              }
+            },
+            "required": [
+              "operations"
+            ]
+          }
+        },
+        {
+          "function_name": "query_impacted_users",
+          "tool_name": "query_impacted_users",
+          "description": "按变压器ID查询中压/低压用户清单，可用于停电影响用户明细。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "transformerIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "变压器设备ID列表，例如 TRANS_..."
+              },
+              "limit": {
+                "type": "number",
+                "description": "用户明细上限，默认 1000。"
+              }
+            },
+            "required": [
+              "transformerIds"
+            ]
+          }
+        },
+        {
+          "function_name": "get_grid_overview",
+          "tool_name": "get_grid_overview",
+          "description": "查询全配网总体统计。用于回答配网有多少条馈线、多少个XML、多少座变电站、多少用户、哪些馈线用户最多，以及开关状态和电流数据覆盖情况。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "topFeederLimit": {
+                "type": "number",
+                "description": "返回用户数最多的馈线数量，默认10，最大100。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "query_switch_user_loads",
+          "tool_name": "query_switch_user_loads",
+          "description": "查询开关下带用户数及当前电流。按当前开关状态和多电源拓扑，统计断开该开关后必然失电的变压器及ZY/DY用户数；适合回答哪些开关下带超过2000户。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "minUsers": {
+                "type": "number",
+                "description": "最少用户数，默认2000。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，按变电站名称过滤。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "可选，按馈线ID或馈线名称过滤。"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选，按柜名、开关号或开关ID过滤。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回数量，默认100，最大1000。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "query_switch_currents",
+          "tool_name": "query_switch_currents",
+          "description": "按实际电流对全网开关排序和筛选。用于回答电流最大/最小、超过某安培值、某变电站或馈线有哪些带电流测点的开关；返回柜名、馈线、三相电流和DAT来源。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "minAmp": {
+                "type": "number",
+                "description": "可选，最小电流（A）。"
+              },
+              "maxAmp": {
+                "type": "number",
+                "description": "可选，最大电流（A）。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，按变电站名称过滤。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "可选，按馈线ID、F编号或馈线名称过滤。"
+              },
+              "cabinet": {
+                "type": "string",
+                "description": "可选，按柜名过滤。"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选，按设备ID、开关号或柜名关键词过滤。"
+              },
+              "sort": {
+                "type": "string",
+                "enum": [
+                  "desc",
+                  "asc"
+                ],
+                "description": "按电流降序或升序，默认desc。"
+              },
+              "includeUnmatched": {
+                "type": "boolean",
+                "description": "是否包含DAT中存在但无法匹配BLACKXML设备的原始测点，默认false。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回数量，默认100，最大1000。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "list_update_files",
+          "tool_name": "list_update_files",
+          "description": "列出管理员放入更新暂存区的XML、站线变户CSV、开关电流DAT和开关状态DT文件。",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "function_name": "update_data_bundle",
+          "tool_name": "update_data_bundle",
+          "description": "统一更新BLACKXML、站线变户、开关电流和开关状态，并按需重建索引。执行前会预检全部暂存文件，同名文件自动备份。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "xmlFiles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "XML文件名列表，最多500个。"
+              },
+              "zyFile": {
+                "type": "string",
+                "description": "中压站线变户CSV文件名。"
+              },
+              "dyFile": {
+                "type": "string",
+                "description": "低压站线变户CSV文件名。"
+              },
+              "currentFile": {
+                "type": "string",
+                "description": "开关电流DAT文件名。"
+              },
+              "statusFiles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "开关状态DT文件名列表，最多20个。"
+              },
+              "rebuild": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "current",
+                  "analytics",
+                  "all"
+                ],
+                "description": "更新后重建的索引，默认all。"
+              },
+              "minUsers": {
+                "type": "number",
+                "description": "分析索引的最小用户数，默认1。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ],
+                "description": "必须明确传APPLY才执行。"
+              }
+            },
+            "required": [
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "reload_update_manifest",
+          "tool_name": "reload_update_manifest",
+          "description": "读取更新暂存区中的reload.json，统一更新XML、站线变户、开关电流和开关状态，成功后归档清单。适合软件定时reload。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "manifest": {
+                "type": "string",
+                "description": "JSON清单文件名，默认reload.json。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ],
+                "description": "必须明确传APPLY才执行。"
+              }
+            },
+            "required": [
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "sync_to_dameng",
+          "tool_name": "sync_to_dameng",
+          "description": "将MCP开关电流和负荷分析索引同步到达梦DM8。可选同步约四百万行站线变户数据。连接信息由管理员环境变量提供。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "includeUsers": {
+                "type": "boolean",
+                "description": "是否同步站线变户全量数据，默认false。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "update_blackxml",
+          "tool_name": "update_blackxml",
+          "description": "从更新暂存区导入一个或多个CIM/RDF XML图模。更新前自动备份同名文件，并刷新馈线索引。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "更新暂存区内的XML文件名，最多500个。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ],
+                "description": "必须明确传APPLY才执行。"
+              }
+            },
+            "required": [
+              "files",
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "update_station_line_transformer_users",
+          "tool_name": "update_station_line_transformer_users",
+          "description": "从更新暂存区导入站-线-变-户CSV并原子切换ZY/DY用户数据集。支持只更新其中一种。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "zyFile": {
+                "type": "string",
+                "description": "中压用户CSV文件名。"
+              },
+              "dyFile": {
+                "type": "string",
+                "description": "低压用户CSV文件名。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ],
+                "description": "必须明确传APPLY才执行。"
+              }
+            },
+            "required": [
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "update_switch_current",
+          "tool_name": "update_switch_current",
+          "description": "从更新暂存区导入开关电流DAT文件，保留旧文件并由时间戳选择最新数据。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "DAT文件名。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "file",
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "update_switch_status",
+          "tool_name": "update_switch_status",
+          "description": "从更新暂存区导入全量或增量开关状态DT文件，更新前自动备份同名文件。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "DT文件名，最多20个。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "files",
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "rebuild_data_indexes",
+          "tool_name": "rebuild_data_indexes",
+          "description": "数据更新后重建开关电流目录和开关用户数分析索引。全量图模可能需要较长时间。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "analytics",
+                  "all"
+                ],
+                "description": "默认all。"
+              },
+              "minUsers": {
+                "type": "number",
+                "description": "分析索引最小用户阈值，默认1。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "get_mcp_status",
+          "tool_name": "get_mcp_status",
+          "description": "查看 MCP 服务、BLACKXML、开关状态、用户索引的当前状态。",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      ],
+      "enabled": true,
+      "bound_agents": [
+        "code_writer"
+      ]
+    }
+  },
+  "imports": []
+}

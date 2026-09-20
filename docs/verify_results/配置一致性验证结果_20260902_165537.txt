@@ -1,0 +1,14 @@
+DFEcrab 配置一致性修复（v4.3）验证结果
+时间: 2026-09-02 16:55:37
+网关: http://172.20.51.153:6789 | 用户: admin
+======================================================================
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[PASS ] 本地配置·dfecrab.json providers=['qwen3', 'qwen3_32b', 'qwen3_32b_q4'], enabled=['qwen3_32b_q4']
+[PASS ] 本地配置·gateway.yaml gateway=['host', 'port', 'ws_port']
+[PASS ] model_manager 冒烟 providers=['qwen3', 'qwen3_32b', 'qwen3_32b_q4'], current=qwen3_32b_q4, fallback=[]
+[PASS ] adapter clamp 小输入保持 4096 / 大输入钳到 3074（<4096）
+[PASS ] 模型列表 3 provider 齐全: ['qwen3', 'qwen3_32b', 'qwen3_32b_q4']
+[PASS ] 模型列表·主力 qwen3_32b_q4 enabled=True
+[PASS ] 模型列表·current current_provider=qwen3_32b_q4
+[PASS ] 当前模型 current_provider=qwen3_32b_q4
+[PASS ] Agent列表 agent 数=6

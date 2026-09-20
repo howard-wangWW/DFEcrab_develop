@@ -1,0 +1,73 @@
+<div class="slide overview">
+  <h2 class="slide-title">📋 项目概述</h2>
+  <div class="content-grid">
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <h3>项目定位</h3>
+      <p>面向电网运维场景的多智能体协同平台，通过多个专业智能体协作完成复杂任务</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🏗️</div>
+      <h3>架构模式</h3>
+      <p>Gateway(HTTP) → Manager(gRPC) → Workers(gRPC) 三层微服务架构</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🧠</div>
+      <h3>核心能力</h3>
+      <p>Session管理、记忆体系、自进化、定时调度、大模型集成</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔧</div>
+      <h3>技术栈</h3>
+      <p>Python + gRPC + Zookeeper + llama.cpp + REST API</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.overview {
+    background: #ffffff;
+    padding: 40px 50px;
+    color: #1a1a2e;
+  }
+  .slide-title {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 30px;
+    color: #203a43;
+  }
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    height: calc(100% - 120px);
+  }
+  .card {
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  .card-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .card h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #203a43;
+    margin: 0 0 12px 0;
+  }
+  .card p {
+    font-size: 16px;
+    color: #495057;
+    line-height: 1.6;
+    margin: 0;
+  }
+</style>

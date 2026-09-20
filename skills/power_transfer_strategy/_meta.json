@@ -1,0 +1,15 @@
+{
+    "name": "power_transfer_strategy",
+    "version": "1.0.0",
+    "description": "根据过载情况生成转电策略方案",
+    "author": "DFEcrab Team",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "analysis_result": {
+                "type": "string",
+                "description": "负载分析技能输出的 JSON 字符串"
+            }
+        }
+    }
+}

@@ -1,0 +1,100 @@
+<div class="slide interaction">
+  <h2 class="slide-title">🔀 前后台交互流程</h2>
+  <div class="interaction-flow">
+    <div class="int-step">
+      <div class="int-num">1</div>
+      <h4>用户请求</h4>
+      <p>POST /api/v2/chat<br/>{"message": "写诗"}</p>
+    </div>
+    <div class="int-arrow">↓</div>
+    <div class="int-step">
+      <div class="int-num">2</div>
+      <h4>Session 处理</h4>
+      <p>检查 session_id<br/>创建/复用 Session</p>
+    </div>
+    <div class="int-arrow">↓</div>
+    <div class="int-step">
+      <div class="int-num">3</div>
+      <h4>增强消息</h4>
+      <p>加载历史 + 摘要<br/>构建完整上下文</p>
+    </div>
+    <div class="int-arrow">↓</div>
+    <div class="int-step">
+      <div class="int-num">4</div>
+      <h4>gRPC 调用</h4>
+      <p>→ Manager Agent<br/>→ Worker Agents</p>
+    </div>
+    <div class="int-arrow">↓</div>
+    <div class="int-step">
+      <div class="int-num">5</div>
+      <h4>保存响应</h4>
+      <p>记录到 Session<br/>持久化存储</p>
+    </div>
+    <div class="int-arrow">↓</div>
+    <div class="int-step highlight">
+      <div class="int-num">6</div>
+      <h4>返回结果</h4>
+      <p>{"session_id": "xxx",<br/>"summary": "文学创作"}</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.interaction {
+    background: linear-gradient(135deg, #0f2027, #203a43);
+    padding: 35px 40px;
+    color: #ffffff;
+  }
+  .slide.interaction .slide-title {
+    color: #ffffff;
+    font-size: 32px;
+    margin-bottom: 25px;
+    text-align: center;
+  }
+  .interaction-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .int-step {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px 24px;
+    text-align: center;
+    width: 100%;
+    max-width: 500px;
+  }
+  .int-step.highlight {
+    background: rgba(6,214,160,0.1);
+    border-color: #06d6a0;
+  }
+  .int-num {
+    width: 28px;
+    height: 28px;
+    background: #3a86ff;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    margin: 0 auto 8px;
+  }
+  .int-step h4 {
+    font-size: 16px;
+    margin: 0 0 4px 0;
+  }
+  .int-step p {
+    font-size: 13px;
+    margin: 0;
+    color: rgba(255,255,255,0.7);
+  }
+  .int-arrow {
+    font-size: 18px;
+    color: #06d6a0;
+    font-weight: bold;
+  }
+</style>

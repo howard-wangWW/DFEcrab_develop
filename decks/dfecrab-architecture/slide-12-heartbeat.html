@@ -1,0 +1,125 @@
+<div class="slide heartbeat">
+  <h2 class="slide-title">💓 心跳与定时任务</h2>
+  <div class="heartbeat-content">
+    <div class="hb-section">
+      <h3>💓 心跳机制</h3>
+      <div class="hb-features">
+        <div class="hb-card">
+          <div class="hb-icon">🔍</div>
+          <h4>健康检查</h4>
+          <p>定期检查所有 Agent 状态</p>
+        </div>
+        <div class="hb-card">
+          <div class="hb-icon">📊</div>
+          <h4>状态监控</h4>
+          <p>监控负载、响应时间</p>
+        </div>
+        <div class="hb-card">
+          <div class="hb-icon">⚠️</div>
+          <h4>故障检测</h4>
+          <p>自动发现异常 Agent</p>
+        </div>
+      </div>
+    </div>
+    <div class="hb-section">
+      <h3>⏰ 定时任务调度</h3>
+      <div class="scheduler-flow">
+        <div class="sched-step">
+          <span class="sched-icon">📋</span>
+          <p>加载任务配置</p>
+        </div>
+        <div class="sched-arrow">→</div>
+        <div class="sched-step">
+          <span class="sched-icon">⏱️</span>
+          <p>创建定时器</p>
+        </div>
+        <div class="sched-arrow">→</div>
+        <div class="sched-step">
+          <span class="sched-icon">🤖</span>
+          <p>触发 Agent 执行</p>
+        </div>
+        <div class="sched-arrow">→</div>
+        <div class="sched-step">
+          <span class="sched-icon">💾</span>
+          <p>记录执行结果</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.heartbeat {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.heartbeat .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .heartbeat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+  }
+  .hb-section h3 {
+    font-size: 22px;
+    margin: 0 0 15px 0;
+    color: #203a43;
+  }
+  .hb-features {
+    display: flex;
+    gap: 15px;
+  }
+  .hb-card {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .hb-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+  .hb-card h4 {
+    font-size: 16px;
+    margin: 0 0 6px 0;
+    color: #203a43;
+  }
+  .hb-card p {
+    font-size: 13px;
+    margin: 0;
+    color: #6c757d;
+  }
+  .scheduler-flow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sched-step {
+    background: #f0f7ff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: center;
+    flex: 1;
+  }
+  .sched-icon {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .sched-step p {
+    font-size: 13px;
+    margin: 0;
+    color: #495057;
+  }
+  .sched-arrow {
+    font-size: 20px;
+    color: #3a86ff;
+    font-weight: bold;
+  }
+</style>

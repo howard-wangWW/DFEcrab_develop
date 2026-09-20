@@ -1,0 +1,119 @@
+<div class="slide multi-agent">
+  <h2 class="slide-title">🤝 多智能体协作</h2>
+  <div class="collab-content">
+    <div class="collab-diagram">
+      <div class="collab-step">
+        <div class="collab-icon">📊</div>
+        <h3>1. Analyst</h3>
+        <p>数据分析</p>
+        <div class="collab-detail">提取关键信息<br/>→ analysis_result</div>
+      </div>
+      <div class="collab-arrow">→</div>
+      <div class="collab-step">
+        <div class="collab-icon">📝</div>
+        <h3>2. Reporter</h3>
+        <p>报告生成</p>
+        <div class="collab-detail">基于分析结果<br/>→ report_content</div>
+      </div>
+      <div class="collab-arrow">→</div>
+      <div class="collab-step">
+        <div class="collab-icon">📁</div>
+        <h3>3. FileManager</h3>
+        <p>文件保存</p>
+        <div class="collab-detail">保存到本地<br/>→ filepath</div>
+      </div>
+    </div>
+    <div class="collab-features">
+      <div class="collab-card">
+        <h3>🎯 意图识别</h3>
+        <p>Manager 自动识别简单/复杂任务</p>
+      </div>
+      <div class="collab-card">
+        <h3>🔄 工作流编排</h3>
+        <p>自动编排多 Agent 执行顺序</p>
+      </div>
+      <div class="collab-card">
+        <h3>💬 共享 Session</h3>
+        <p>所有 Agent 共享同一个 Session 上下文</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.multi-agent {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.multi-agent .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .collab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+  }
+  .collab-diagram {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .collab-step {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .collab-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+  .collab-step h3 {
+    font-size: 16px;
+    margin: 0 0 4px 0;
+    color: #203a43;
+  }
+  .collab-step p {
+    font-size: 13px;
+    margin: 0 0 8px 0;
+    color: #6c757d;
+  }
+  .collab-detail {
+    font-size: 12px;
+    color: #3a86ff;
+    background: #e9ecef;
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+  .collab-arrow {
+    font-size: 24px;
+    color: #3a86ff;
+    font-weight: bold;
+  }
+  .collab-features {
+    display: flex;
+    gap: 12px;
+  }
+  .collab-card {
+    flex: 1;
+    background: #f0f7ff;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .collab-card h3 {
+    font-size: 15px;
+    margin: 0 0 4px 0;
+    color: #203a43;
+  }
+  .collab-card p {
+    font-size: 13px;
+    margin: 0;
+    color: #495057;
+  }
+</style>

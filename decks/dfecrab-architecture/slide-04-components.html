@@ -1,0 +1,105 @@
+<div class="slide components">
+  <h2 class="slide-title">🧩 核心组件</h2>
+  <div class="components-grid">
+    <div class="comp-card">
+      <div class="comp-header" style="background: linear-gradient(135deg, #8338ec, #3a86ff);">
+        <h3>🌐 Gateway</h3>
+      </div>
+      <ul class="comp-list">
+        <li>HTTP API 服务 (6789)</li>
+        <li>Session 生命周期管理</li>
+        <li>请求增强（添加上下文）</li>
+        <li>定时任务调度</li>
+        <li>调用 Manager Agent</li>
+      </ul>
+    </div>
+    <div class="comp-card">
+      <div class="comp-header" style="background: linear-gradient(135deg, #ff006e, #fb5607);">
+        <h3>🧠 Manager Agent</h3>
+      </div>
+      <ul class="comp-list">
+        <li>意图识别（简单/复杂）</li>
+        <li>任务分流策略</li>
+        <li>多 Agent 工作流编排</li>
+        <li>审计日志记录</li>
+        <li>Zookeeper 服务发现</li>
+      </ul>
+    </div>
+    <div class="comp-card">
+      <div class="comp-header" style="background: linear-gradient(135deg, #fb5607, #ffbe0b);">
+        <h3>🤖 Worker Agents</h3>
+      </div>
+      <ul class="comp-list">
+        <li>Analyst: 数据分析</li>
+        <li>Reporter: 报告生成</li>
+        <li>FileManager: 文件管理</li>
+        <li>独立进程，随机端口</li>
+        <li>Zookeeper 自动注册</li>
+      </ul>
+    </div>
+    <div class="comp-card">
+      <div class="comp-header" style="background: linear-gradient(135deg, #3a86ff, #06d6a0);">
+        <h3>📋 Session Manager</h3>
+      </div>
+      <ul class="comp-list">
+        <li>创建/查找 Session</li>
+        <li>自动生成摘要</li>
+        <li>加载历史上下文</li>
+        <li>持久化存储</li>
+        <li>过期自动清理</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.components {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.components .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .components-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .comp-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .comp-header {
+    padding: 12px 16px;
+    color: #fff;
+  }
+  .comp-header h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+  .comp-list {
+    margin: 12px 16px;
+    padding: 0;
+    list-style: none;
+  }
+  .comp-list li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: #495057;
+    border-bottom: 1px solid #eee;
+  }
+  .comp-list li:last-child {
+    border-bottom: none;
+  }
+  .comp-list li::before {
+    content: "✓ ";
+    color: #06d6a0;
+    font-weight: bold;
+  }
+</style>

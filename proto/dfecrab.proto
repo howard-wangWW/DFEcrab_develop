@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package dfecrab;
+
+// ============ Worker Agent 服务 ============
+
+// Worker Agent执行请求
+message ExecuteRequest {
+  string session_id = 1;
+  map<string, string> input_data = 2;
+  repeated string skills = 3;
+  string instruction = 4;
+  int32 timeout = 5;
+  string user_id = 6;  // 当前请求的用户（记忆按用户隔离）
+}
+
+// Worker Agent执行响应
+message ExecuteResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string session_id = 3;
+  string result = 4;
+  string error = 5;
+  bool memory_updated = 6;
+  int64 execution_time_ms = 7;
+  string timestamp = 8;
+}
+
+// Worker Agent健康状态
+message HealthStatus {
+  bool healthy = 1;
+  string agent_id = 2;
+  int32 session_count = 3;
+  repeated string enabled_skills = 4;
+  string timestamp = 5;
+}
+
+// Worker Agent gRPC服务
+service AgentService {
+  // 执行任务
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  
+  // 健康检查
+  rpc Health(HealthCheckRequest) returns (HealthStatus);
+}
+
+// 健康检查请求
+message HealthCheckRequest {}
+
+// ============ Manager Agent 服务 ============
+
+// 聊天请求
+message ChatRequest {
+  string message = 1;
+  optional string session_id = 2;
+  string user_id = 3;
+}
+
+// 聊天响应
+message ChatResponse {
+  bool success = 1;
+  string session_id = 2;
+  string message = 3;
+  string task_type = 4;  // simple 或 complex
+  repeated string agents_used = 5;
+  string audit_log_id = 6;
+  string error = 7;
+  string timestamp = 8;
+
+  // === 性能监控指标 (v4.1 新增) ===
+  AgentPerfMetrics perf_metrics = 9;        // Manager 自身性能
+  repeated AgentPerfMetrics worker_metrics = 10;  // 各 Worker 性能
+}
+
+// 单个 Agent 的性能指标
+message AgentPerfMetrics {
+  string agent_id = 1;
+  int64 total_duration_ms = 2;         // 总耗时 (ms)
+  int64 first_token_ms = 3;            // 首 token 延迟 (ms)
+  int32 prompt_tokens = 4;             // 输入 token 数
+  int32 completion_tokens = 5;         // 输出 token 数
+  int32 total_tokens = 6;              // 总 token 数
+  double tokens_per_second = 7;        // token 生成速度
+  string timestamp = 8;
+}
+
+// Manager Agent gRPC服务
+service ManagerService {
+  // 聊天接口
+  rpc Chat(ChatRequest) returns (ChatResponse);
+
+  // 流式聊天接口
+  rpc ChatStream(ChatRequest) returns (stream StreamChatResponse);
+
+  // 健康检查
+  rpc ManagerHealth(HealthCheckRequest) returns (ManagerHealthStatus);
+}
+
+// Manager健康状态
+message ManagerHealthStatus {
+  bool healthy = 1;
+  string service = 2;
+  int32 worker_count = 3;
+  int32 session_count = 4;
+  string timestamp = 5;
+}

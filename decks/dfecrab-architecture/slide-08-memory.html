@@ -1,0 +1,109 @@
+<div class="slide memory">
+  <h2 class="slide-title">🧠 记忆体系设计</h2>
+  <div class="memory-layers">
+    <div class="mem-layer mem-short">
+      <div class="mem-header">
+        <h3>短期记忆（会话级）</h3>
+        <span class="mem-badge">Session 级别</span>
+      </div>
+      <ul class="mem-list">
+        <li>保存当前对话历史（最近 100 条消息）</li>
+        <li>每次请求自动加载上下文</li>
+        <li>支持多会话独立管理</li>
+        <li>用途：连续对话、上下文理解</li>
+      </ul>
+    </div>
+    <div class="mem-layer mem-long">
+      <div class="mem-header">
+        <h3>长期记忆（Agent 级）</h3>
+        <span class="mem-badge">Agent 级别</span>
+      </div>
+      <ul class="mem-list">
+        <li>成功经验模式（successful_patterns）</li>
+        <li>专业知识沉淀（professional_knowledge）</li>
+        <li>失败教训记录（lessons_learned）</li>
+        <li>用途：自进化、能力提升</li>
+      </ul>
+    </div>
+    <div class="mem-layer mem-global">
+      <div class="mem-header">
+        <h3>全局共享记忆</h3>
+        <span class="mem-badge">全局共享</span>
+      </div>
+      <ul class="mem-list">
+        <li>电网知识库（grid_knowledge）</li>
+        <li>术语库、模板库</li>
+        <li>所有 Agent 共享访问</li>
+        <li>用途：跨 Agent 知识复用</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.memory {
+    background: #ffffff;
+    padding: 35px 40px;
+    color: #1a1a2e;
+  }
+  .slide.memory .slide-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: #203a43;
+  }
+  .memory-layers {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .mem-layer {
+    border-radius: 12px;
+    padding: 18px 22px;
+    border-left: 6px solid;
+  }
+  .mem-short {
+    background: #f0f7ff;
+    border-color: #3a86ff;
+  }
+  .mem-long {
+    background: #f0fff4;
+    border-color: #06d6a0;
+  }
+  .mem-global {
+    background: #fff8f0;
+    border-color: #fb5607;
+  }
+  .mem-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .mem-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #203a43;
+  }
+  .mem-badge {
+    background: #e9ecef;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+  }
+  .mem-list {
+    margin: 0;
+    padding-left: 20px;
+  }
+  .mem-list li {
+    font-size: 15px;
+    color: #495057;
+    margin: 6px 0;
+    line-height: 1.5;
+  }
+  .mem-list li::marker {
+    color: #8338ec;
+  }
+</style>

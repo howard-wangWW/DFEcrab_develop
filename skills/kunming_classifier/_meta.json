@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "author": "Kunming Agent",
+  "description": "昆明配网查询分类技能，根据用户查询分类后提取结构化参数，支持跳闸统计/早会材料/受令资格/异常信号统计/城区一小时跳闸/保供电跳闸/某局跳闸/重过载等业务分类，未命中返回类别5(其他对话)",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "用户查询文本"
+      },
+      "category": {
+        "type": "integer",
+        "description": "分类编号: 5-其他对话(不调API), 6-跳闸统计, 7-早会材料, 8-受令资格, 9-异常信号统计, 10-城区一小时跳闸, 11-保供电跳闸, 12-某局跳闸, 13-重过载",
+        "default": 5
+      },
+      "startTime": {
+        "type": "string",
+        "description": "查询起始时间 YYYY-MM-DD HH:MM:SS（类别6/7/10/11需要）",
+        "default": ""
+      },
+      "endTime": {
+        "type": "string",
+        "description": "查询结束时间 YYYY-MM-DD HH:MM:SS（类别6/7/10/11需要）",
+        "default": ""
+      },
+      "personName": {
+        "type": "string",
+        "description": "受令资格查询人员姓名（类别8需要）",
+        "default": ""
+      },
+      "date": {
+        "type": "string",
+        "description": "异常信号统计查询日期 YYYY-MM-DD（类别9需要）",
+        "default": ""
+      },
+      "bureau": {
+        "type": "string",
+        "description": "供电局名称（类别12需要，如西山局、官渡局、五华局等）",
+        "default": ""
+      },
+      "mode": {
+        "type": "string",
+        "description": "重过载查询模式（类别13需要）：area_count/total_count/trend/detail/top_feeders",
+        "default": ""
+      },
+      "area": {
+        "type": "string",
+        "description": "区局名称（类别13需要，如官渡供电局、西山局）",
+        "default": ""
+      },
+      "days": {
+        "type": "integer",
+        "description": "查询天数（类别13的trend模式需要，默认3天）",
+        "default": 3
+      },
+      "load_threshold": {
+        "type": "integer",
+        "description": "负载率阈值（类别13需要，默认80）",
+        "default": 80
+      }
+    },
+    "required": ["query"]
+  }
+}

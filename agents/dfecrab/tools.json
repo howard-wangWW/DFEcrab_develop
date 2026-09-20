@@ -1,0 +1,13 @@
+{
+  "enabled_skills": [
+    "memory_maintenance",
+    "list_dir",
+    "word_read",
+    "file_read",
+    "weather",
+    "excel-read",
+    "web-fetch",
+    "dm_query",
+    "image_gen"
+  ]
+}

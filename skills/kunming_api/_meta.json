@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "author": "Kunming Agent",
+  "description": "昆明配网数据 API 调用技能，通过 HTTP 调用 DM-kunming.py (192.168.113.15:8088) 的所有接口，包括跳闸统计/早会材料/受令资格/异常信号统计/城区一小时跳闸/保供电跳闸/某局跳闸等",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "description": "API接口名: tiaozha(跳闸统计), zaohui(早会材料), check_qualification(受令资格), get_abnormal_signals(异常信号统计), today-chengqu-1h-trip(城区一小时跳闸), today-baogongdian-trip(保供电跳闸), today-bureau-trip(某局跳闸), svg_groups(SVG查询), meta(表结构), query(执行SQL), generate-excel(生成Excel)"
+      },
+      "params": {
+        "type": "object",
+        "description": "接口参数字典，根据endpoint不同传入不同参数"
+      }
+    },
+    "required": ["endpoint"]
+  }
+}

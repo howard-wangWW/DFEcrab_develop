@@ -1,0 +1,9 @@
+{
+  "skill_id": "image_gen",
+  "version": "1.0.0",
+  "name": "图片生成",
+  "description": "根据文本描述生成图片，返回可访问的图片地址，可在回复中以 Markdown 展示",
+  "entry": "execute:execute",
+  "tool": true,
+  "enabled": true
+}

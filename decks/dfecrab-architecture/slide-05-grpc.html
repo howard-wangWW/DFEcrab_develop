@@ -1,0 +1,114 @@
+<div class="slide grpc">
+  <h2 class="slide-title">🔌 gRPC 通信机制</h2>
+  <div class="grpc-content">
+    <div class="grpc-section">
+      <h3>📦 Protobuf 定义</h3>
+      <pre class="code-block">service ManagerService {
+  rpc Chat(ChatRequest) returns (ChatResponse);
+  rpc ManagerHealth(HealthRequest) returns (ManagerHealthStatus);
+}
+
+service AgentService {
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  rpc Health(HealthRequest) returns (HealthStatus);
+}</pre>
+    </div>
+    <div class="grpc-section">
+      <h3>🔍 Zookeeper 服务发现</h3>
+      <div class="zk-tree">
+        <div class="zk-node">/dfecrab/services/</div>
+        <div class="zk-children">
+          <div class="zk-child">manager_agent/</div>
+          <div class="zk-child">worker_agent/</div>
+        </div>
+      </div>
+      <p class="zk-desc">自动注册 · 健康检查 · 动态发现</p>
+    </div>
+    <div class="grpc-section">
+      <h3>📡 通信流程</h3>
+      <div class="flow-diagram">
+        <div class="flow-step">Gateway</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">查询 ZK</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">获取 Manager</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">gRPC 调用</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .slide.grpc {
+    background: linear-gradient(135deg, #0f2027, #203a43);
+    padding: 35px 40px;
+    color: #ffffff;
+  }
+  .slide.grpc .slide-title {
+    color: #ffffff;
+    font-size: 32px;
+    margin-bottom: 25px;
+  }
+  .grpc-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .grpc-section h3 {
+    font-size: 20px;
+    color: #a8d8ea;
+    margin: 0 0 10px 0;
+  }
+  .code-block {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    color: #a8d8ea;
+    overflow-x: auto;
+  }
+  .zk-tree {
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .zk-node {
+    font-weight: 600;
+    color: #ffbe0b;
+    font-size: 16px;
+  }
+  .zk-children {
+    margin-left: 20px;
+    margin-top: 8px;
+  }
+  .zk-child {
+    color: #8338ec;
+    font-size: 14px;
+  }
+  .zk-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,0.6);
+    margin: 10px 0 0 0;
+  }
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .flow-step {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .flow-arrow {
+    color: #06d6a0;
+    font-size: 20px;
+    font-weight: bold;
+  }
+</style>

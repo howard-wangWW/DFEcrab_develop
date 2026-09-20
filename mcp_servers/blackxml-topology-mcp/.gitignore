@@ -1,0 +1,12 @@
+node_modules/
+.cache/
+logs/
+数据备份/
+更新数据/.applied-*
+*.log
+.DS_Store
+Thumbs.db
+selection.json
+用户列表索引/*.sqlite-shm
+用户列表索引/*.sqlite-wal
+node_v24/

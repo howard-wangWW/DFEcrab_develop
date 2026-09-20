@@ -1,0 +1,66 @@
+{
+  "version": "1.0",
+  "agents": {
+    "kunming": {
+      "icon": "🗄️",
+      "name": "昆明配网数据专家",
+      "description": "查询昆明配网业务数据：跳闸统计、早会简报、受令资格、异常信号统计、SVG分组线路、保供电、城区一小时、某局跳闸、重过载。调度规程/安全措施/理论类知识问答请路由到 knowledge_agent",
+      "skills": [
+        "kunming_classifier",
+        "kunming_api"
+      ]
+    },
+    "dfecrab": {
+      "icon": "🦀",
+      "name": "东方电子小螃蟹",
+      "description": "通用问答",
+      "skills": [
+        "memory_maintenance",
+        "list_dir",
+        "word_read",
+        "file_read",
+        "weather",
+        "excel-read",
+        "web-fetch",
+        "dm_query"
+      ]
+    },
+    "alert_judge": {
+      "icon": "⚡",
+      "name": "电力告警研判专家",
+      "description": "仅处理JSON格式的电力告警信号（含station_inside_outer/throbNum/alert_content/signal_package字段），做正常/异常/需人工审核研判。自然语言查询请路由到kunming",
+      "skills": []
+    },
+    "knowledge_agent": {
+      "icon": "📚",
+      "name": "知识库检索专家",
+      "description": "基于本地向量知识库检索电力调度规程、操作规范、安全措施、两票三制、规章制度、技术标准、安全规程、应急预案等并问答",
+      "skills": [
+        "knowledge_qa",
+        "knowledge_search"
+      ]
+    },
+    "code_writer": {
+      "icon": "✍️",
+      "name": "代码撰写与执行师",
+      "description": "撰写并执行Python代码，支持代码生成、运行、调试，处理写代码/运行程序/数据分析等编程任务",
+      "skills": [
+        "code_executor"
+      ]
+    },
+    "shenpiao": {
+      "icon": "🤖",
+      "name": "昆明配网审票专家",
+      "description": "对昆明相关工作票进行审核，输出审核结果",
+      "skills": [
+        "kunming_api"
+      ]
+    },
+    "fabu": {
+      "icon": "🤖",
+      "name": "昆明配网发布专家",
+      "description": "对审票结果进行发布",
+      "skills": []
+    }
+  }
+}

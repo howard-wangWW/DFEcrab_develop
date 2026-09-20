@@ -1,0 +1,9 @@
+{
+  "skill_id": "code_executor",
+  "version": "1.0.0",
+  "name": "Python代码沙箱执行器",
+  "description": "执行Python代码沙箱工具，智能体写完代码后调用该工具运行代码，获取输出结果",
+  "entry": "execute:execute",
+  "tool": true,
+  "enabled": true
+}

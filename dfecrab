@@ -1,0 +1,1118 @@
+#!/home/e8900/DFEcrab/venv/bin/python3
+"""
+DFEcrab 主入口
+
+多智能体协同系统 (gRPC架构)
+
+用法:
+    dfecrab start                                   # 启动gRPC架构所有服务
+    dfecrab stop                                    # 停止 Gateway + Agent 服务
+    dfecrab stopall                                 # 停止全部服务（含知识库 + MCP）
+    dfecrab status                                  # 查看状态
+    dfecrab chat "消息内容"                          # 发送对话
+    dfecrab test                                    # 运行集成测试
+"""
+
+import subprocess
+import sys
+import json
+from pathlib import Path
+
+import click
+
+# 添加项目根目录到 Python 路径
+_project_root = Path(__file__).parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+if str(_project_root / "src") not in sys.path:
+    sys.path.insert(0, str(_project_root / "src"))
+
+# 从统一配置读取
+from config.config_loader import config as _global_cfg
+
+# 项目根目录
+project_root = _global_cfg.project_root
+
+# 知识库端口（单一事实源：config/gateway.yaml local_ports.knowledge_api）
+from config.port_loader import knowledge_api_port as _kb_port_fn
+_kb_port = _kb_port_fn(6788)
+
+
+def _resolve_venv_python() -> Path:
+    """返回项目 venv 的 python 解释器路径（优先 python3，回退 python）。
+
+    所有子服务（Gateway / Agent / 知识库 / MCP / ZK 清理）统一用它启动，
+    确保都跑在项目自身的 venv 环境里，而不是系统 python。
+    """
+    venv_bin = Path(__file__).parent / "venv" / "bin"
+    for name in ("python3", "python"):
+        cand = venv_bin / name
+        if cand.exists():
+            return cand
+    return venv_bin / "python3"
+
+
+def _run_index_rebuild() -> None:
+    """调用知识库索引重建脚本（scripts/rebuild_knowledge_index.py）"""
+    venv_python = _resolve_venv_python()
+    script = project_root / "scripts" / "rebuild_knowledge_index.py"
+    if not script.exists():
+        click.echo("   ⚠️ 未找到索引重建脚本，请手动执行 python3 scripts/rebuild_knowledge_index.py")
+        return
+    click.echo("   🔧 正在重建知识库索引...")
+    try:
+        res = subprocess.run(
+            [str(venv_python), str(script)],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        out = (res.stdout or "").strip()
+        if "✅ 索引重建完成" in out:
+            for line in out.splitlines():
+                if line.startswith(("[诊断]", "[构建]", "✅")):
+                    click.echo(f"      {line}")
+        else:
+            click.echo(f"   ⚠️ 索引重建未确认成功: {out[:200]}")
+            if (res.stderr or "").strip():
+                click.echo(f"      stderr: {(res.stderr or '').strip()[:200]}")
+    except Exception as e:
+        click.echo(f"   ⚠️ 索引重建失败: {e}")
+
+
+def _ensure_kb_index_aligned() -> None:
+    """启动知识库前诊断：当前嵌入维度 vs 磁盘索引维度。
+
+    若不一致（如索引用 TF-IDF 建了 300 维、检索时却加载了 512 维模型），
+    faiss 检索会维度不匹配报错。这里发现不一致就自动重建索引。
+    """
+    import json
+    venv_python = _resolve_venv_python()
+
+    # 轻量诊断：分别打印「当前嵌入 dim」和「磁盘索引 dim」（各一行）
+    diag_code = (
+        "import sys, json;"
+        "from pathlib import Path;"
+        "pr = Path('.').resolve();"
+        "sys.path.insert(0, str(pr));"
+        "sys.path.insert(0, str(pr / 'src'));"
+        "from src.knowledge.embedding.local_embedder import LocalEmbedder;"
+        "print(LocalEmbedder().get_dim());"
+        "idx = pr / 'knowledge_base/index/config.json';"
+        "print(json.loads(idx.read_text(encoding='utf-8')).get('dim') if idx.exists() else '')"
+    )
+    try:
+        res = subprocess.run(
+            [str(venv_python), "-c", diag_code],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if res.returncode != 0:
+            click.echo("   ⚠️ 知识库索引诊断失败（跳过，不影响启动）")
+            return
+        lines = [l.strip() for l in (res.stdout or "").splitlines() if l.strip()]
+        if len(lines) < 1:
+            click.echo("   ⚠️ 知识库索引诊断无输出（跳过）")
+            return
+        cur_dim = int(lines[0]) if lines[0].isdigit() else None
+        idx_dim = int(lines[1]) if len(lines) > 1 and lines[1].isdigit() else None
+        if cur_dim is None:
+            return
+
+        if idx_dim is None:
+            click.echo("   🏗️  未发现向量索引，启动后首次检索将自动创建")
+            return
+        if idx_dim != cur_dim:
+            click.echo(click.style(
+                f"   ⚠️ 索引维度不一致: 索引={idx_dim}, 当前嵌入={cur_dim}，自动重建...",
+                fg='yellow'))
+            _run_index_rebuild()
+        else:
+            click.echo(f"   ✅ 知识库索引维度正常 (dim={cur_dim})")
+    except Exception as e:
+        click.echo(f"   ⚠️ 知识库索引诊断异常: {e}（跳过）")
+
+
+@click.group()
+@click.version_option(version="4.0.0-grpc")
+def cli():
+    """DFEcrab - 多智能体协同系统 (gRPC架构)"""
+    pass
+
+
+@cli.command()
+@click.option('--config', '-c', default='config/gateway.yaml', help='配置文件路径')
+def start(config: str):
+    """启动 Gateway + Agent + 知识库 + MCP 全部服务"""
+    import time
+    import urllib.request
+    import os
+    
+    click.echo("🚀 正在启动 DFEcrab gRPC 架构...")
+    click.echo(f"   配置文件: {config}")
+    click.echo("")
+
+    # ★ 兜底：启动前清理 ZK 残留节点，避免误判"已在 Zookeeper 中注册，跳过自动启动"
+    click.echo("🧹 启动前清理 Zookeeper 残留临时节点...")
+    _cleanup_zk()
+    click.echo("")
+
+    # ==== 启动前检测端口占用（Gateway / WebSocket 阻塞；知识库不阻塞，仅提示）====
+    import socket
+    ports_to_check = [
+        (_global_cfg.gateway_port, "Gateway HTTP"),
+        (_global_cfg.websocket_port, "WebSocket"),
+    ]
+    occupied_ports = []
+    for port, name in ports_to_check:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.5)
+        result = sock.connect_ex(('127.0.0.1', port))
+        sock.close()
+        if result == 0:
+            occupied_ports.append(f"  ⚠️  端口 {port} ({name}) 已被占用，可能是旧版本项目未关闭")
+    if occupied_ports:
+        click.echo("")
+        for msg in occupied_ports:
+            click.echo(click.style(msg, fg='yellow'))
+        click.echo(click.style("  💡 请先执行 ./dfecrab stop 关闭旧进程，或手动 kill 占用端口的进程", fg='yellow'))
+        click.echo("")
+        raise SystemExit(1)
+
+    # 优先使用 venv/bin/python3，回退到 python（兼容没有 python3 软链的环境）
+    venv_python = _resolve_venv_python()
+    
+    # 设置PYTHONPATH环境变量及继承LD_LIBRARY_PATH
+    env = os.environ.copy()
+    # 注意顺序：项目自身的 src/ 包含与 pip 包同名的模块（如 src/mcp/ 遮蔽 pip 的 mcp），
+    # 必须让 site-packages 优先。这里用追加而非前置，避免 src/ 跑到 venv 前面导致
+    # `import mcp.types` 解析到项目本地 src/mcp/（没有 types.py）而报错。
+    env["PYTHONPATH"] = env.get("PYTHONPATH", "") + f":{project_root}:{project_root}/src"
+    
+    # ==== 终极修复：强制继承和传递 LD_LIBRARY_PATH ====
+    if "LD_LIBRARY_PATH" in os.environ:
+        env["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
+    
+    # ============================================================
+    #  1. 知识库独立服务：未运行则启动，已运行则检测健康，不阻塞 Gateway
+    #  ============================================================
+    def _kb_healthy() -> bool:
+        try:
+            req = urllib.request.Request(f"http://localhost:{_kb_port}/knowledge/health")
+            with urllib.request.urlopen(req, timeout=2) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    click.echo(f"📚 检测知识库API服务 (端口 {_kb_port})...")
+    kb_ready = _kb_healthy()
+    if kb_ready:
+        click.echo("   ✅ 知识库API健康")
+    else:
+        click.echo("   🔧 知识库API未运行，正在启动...")
+        # 启动前诊断索引维度，不一致则自动重建（避免 faiss 维度不匹配）
+        _ensure_kb_index_aligned()
+        click.echo("   ⏳ 等待知识库初始化 (3秒)...")
+        kb_start_script = project_root / "scripts" / "start_knowledge_api.py"
+        try:
+            kb_proc = subprocess.run(
+                [str(venv_python), str(kb_start_script)],
+                cwd=str(project_root),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+            if kb_proc.returncode == 0 and ("已启动" in (kb_proc.stdout or "") or "已在运行" in (kb_proc.stdout or "")):
+                click.echo("   ✅ 知识库API启动成功")
+            else:
+                click.echo(f"   ⚠️ 知识库API启动可能失败: {(kb_proc.stdout or '').strip()[:200]}")
+        except Exception as e:
+            click.echo(f"   ⚠️ 知识库API启动异常: {e}")
+
+        # 启动后二次健康检查（start_knowledge_api.py 内部已做3秒等待+10秒轮询）
+        time.sleep(1)
+        if _kb_healthy():
+            kb_ready = True
+            click.echo("   ✅ 知识库API健康")
+        else:
+            click.echo(click.style(
+                "   ⚠️ 知识库API健康检查未通过（独立服务，不影响 Gateway 启动）\n"
+                "     可手动排查: tail -f logs/knowledge/knowledge_api.log",
+                fg='yellow'
+            ))
+
+    # ============================================================
+    #  2. 本地 MCP 服务：未运行则启动，已运行则检测，不阻塞 Gateway
+    #     （MCP 为独立服务，stop 不杀；策略同知识库）
+    #     端口单一事实源 = config/gateway.yaml 的 local_ports.mcp
+    # ============================================================
+    def _port_listening(port: int, host: str = "127.0.0.1") -> bool:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            return s.connect_ex((host, port)) == 0
+        finally:
+            s.close()
+
+    # 端口一律来自 gateway.yaml local_ports.mcp，脚本只负责按 MCP_PORT 环境变量监听。
+    # 服务名 → 脚本文件名 的对应关系统一见模块级 _MCP_SCRIPT_ALIASES。
+
+    click.echo("🔌 检测本地 MCP 服务...")
+    mcp_cfg_path = project_root / "config" / "mcporter.json"
+    if mcp_cfg_path.exists():
+        try:
+            mcp_cfg = json.loads(mcp_cfg_path.read_text(encoding="utf-8"))
+            mcp_servers = mcp_cfg.get("mcpServers", {})
+            logs_dir = project_root / "logs" / "mcp"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            # 从 gateway.yaml 读取本地 MCP 端口映射（单一事实源）
+            from config.port_loader import load_local_ports
+            yaml_mcp_ports = (load_local_ports().get("mcp") or {})
+            mcp_dir = project_root / "mcp_servers"
+            started_any = False
+            for svc_name, svc_conf in mcp_servers.items():
+                if svc_conf.get("enabled", True) is False:
+                    continue
+                base_url = svc_conf.get("baseUrl", "")
+                # 只拉起本地服务；远程 MCP（如 kdocs/bing_cn）由对方托管
+                if not base_url.startswith(("http://127.0.0.1", "http://localhost")):
+                    continue
+                from urllib.parse import urlparse
+                parsed = urlparse(base_url)
+                base_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+                host = parsed.hostname or "127.0.0.1"
+                # 端口以 gateway.yaml local_ports.mcp 为权威；与 mcporter.json 不一致时告警
+                yaml_port = yaml_mcp_ports.get(svc_name)
+                if yaml_port is not None and yaml_port != base_port:
+                    click.echo(click.style(
+                        f"   ⚠️ MCP[{svc_name}] 端口不一致: gateway.yaml={yaml_port} vs mcporter.json={base_port}，"
+                        f"请先对齐 config/gateway.yaml 的 local_ports.mcp.{svc_name}", fg='yellow'))
+                port = yaml_port if yaml_port is not None else base_port
+                if _port_listening(port, host):
+                    click.echo(f"   ✅ MCP[{svc_name}] 已在运行 (端口 {port})")
+                    continue
+                # 定位脚本：先按显式别名，再按 <svc_name>.py / mcp_<svc_name>.py 兜底
+                svc_script = None
+                alias_file = _MCP_SCRIPT_ALIASES.get(svc_name)
+                for cand in [alias_file, f"{svc_name}.py", f"mcp_{svc_name}.py"]:
+                    if not cand:
+                        continue
+                    p = mcp_dir / cand
+                    if p.exists():
+                        svc_script = p
+                        break
+                if svc_script is None:
+                    click.echo(click.style(
+                        f"   ⚠️ MCP[{svc_name}] 脚本缺失: 未找到 {svc_name} 对应脚本", fg='yellow'))
+                    continue
+                click.echo(f"   🔧 启动 MCP[{svc_name}] (端口 {port})...")
+                # 显式把 yaml 端口传入 MCP_PORT，保证脚本监听端口与 mcporter.json 一致
+                # MCP 脚本自身会 `from fastmcp import FastMCP` -> `import mcp.types`，
+                # 不能继承父进程的 PYTHONPATH（src/ 会遮蔽 pip 的 mcp 包），
+                # 清掉 PYTHONPATH 让 venv site-packages 优先解析。
+                mcp_env = dict(env)
+                mcp_env.pop("PYTHONPATH", None)
+                mcp_env["MCP_PORT"] = str(port)
+                log_file = logs_dir / f"mcp_{svc_name}.log"
+                with open(log_file, "a", encoding="utf-8") as lf:
+                    subprocess.Popen(
+                        [str(venv_python), str(svc_script)],
+                        stdout=lf, stderr=lf,
+                        env=mcp_env, start_new_session=True,
+                    )
+                started_any = True
+            if started_any:
+                click.echo("   二次检测本地 MCP 端口（轮询等待，最长 15 秒）...")
+                for svc_name, svc_conf in mcp_servers.items():
+                    if svc_conf.get("enabled", True) is False:
+                        continue
+                    base_url = svc_conf.get("baseUrl", "")
+                    if not base_url.startswith(("http://127.0.0.1", "http://localhost")):
+                        continue
+                    from urllib.parse import urlparse
+                    parsed = urlparse(base_url)
+                    base_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+                    host = parsed.hostname or "127.0.0.1"
+                    # 与启动时一致：优先 yaml 端口
+                    yaml_port = yaml_mcp_ports.get(svc_name)
+                    port = yaml_port if yaml_port is not None else base_port
+                    # ★ 轮询等待端口就绪（MCP 冷启动较慢，固定 sleep 会误报失败）
+                    if _wait_port_listening(port, host, timeout=15):
+                        click.echo(f"   ✅ MCP[{svc_name}] 启动成功 (端口 {port})")
+                    else:
+                        click.echo(click.style(
+                            f"   ⚠️ MCP[{svc_name}] 端口未监听，启动可能失败，日志: logs/mcp/mcp_{svc_name}.log",
+                            fg='yellow'))
+        except Exception as e:
+            click.echo(click.style(
+                f"   ⚠️ 本地 MCP 检测异常（独立服务，不影响 Gateway 启动）: {e}", fg='yellow'))
+    else:
+        click.echo("   （未找到 config/mcporter.json，跳过本地 MCP 检测）")
+
+    click.echo("")
+
+    # 启动 Gateway
+    click.echo("📡 启动 Gateway...")
+    subprocess.Popen(
+        [str(venv_python), str(project_root / "scripts" / "start_gateway_grpc.py")],
+        cwd=str(project_root),
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
+    
+    # 增加延迟：确保 Gateway 在 Manager 注册前完成初始化
+    click.echo("⏳ 等待 Gateway 初始化 (3秒)...")
+    time.sleep(3)
+    
+    # Agent Services 由 Gateway 内部的 _auto_start_agents() 自动管理
+    click.echo("🤖 Agent Services 将由 Gateway 自动启动...")
+    time.sleep(1)
+
+    # 等待 Gateway 就绪
+    click.echo("⏳ 等待服务启动...")
+    gateway_ready = False
+    for i in range(15):
+        time.sleep(1)
+        try:
+            req = urllib.request.Request(f"http://localhost:{_global_cfg.gateway_port}/health")
+            with urllib.request.urlopen(req, timeout=2) as response:
+                if response.status == 200:
+                    gateway_ready = True
+                    click.echo("✅ Gateway 就绪!")
+                    break
+        except:
+            pass
+
+    if not gateway_ready:
+        click.echo("❌ Gateway 启动失败，请查看日志排查问题")
+        click.echo(f"   日志: {project_root / 'logs' / 'gateway_grpc.log'}")
+        raise SystemExit(1)
+
+    click.echo("🎉 启动完成!")
+
+
+def _wait_port_listening(port: int, host: str = "127.0.0.1",
+                         timeout: int = 15, interval: float = 0.5) -> bool:
+    """轮询等待端口开始监听。
+
+    MCP 脚本（fastmcp + jieba + 模型加载）冷启动较慢，固定 sleep(2) 容易在
+    端口尚未监听时误报"启动失败"。这里改为轮询，端口一起立刻返回 True。
+
+    Args:
+        port: 目标端口
+        host: 目标主机
+        timeout: 最长等待秒数
+        interval: 每次检测间隔秒数
+
+    Returns:
+        True = 端口已监听；False = 超时仍未监听
+    """
+    import socket
+    import time
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            if s.connect_ex((host, port)) == 0:
+                return True
+        except Exception:
+            pass
+        finally:
+            s.close()
+        time.sleep(interval)
+    return False
+
+
+def _cleanup_zk() -> None:
+    """清理 Zookeeper 中残留的 Agent 临时节点。
+
+    根因：进程被 SIGKILL 强杀时来不及正常注销，ZK 临时节点要等 session 超时
+    （默认几十秒）才自动删除。若残留，Gateway 启动时会误判"Manager 已在
+    Zookeeper 中注册，跳过自动启动"，随后 health check 连死端口报 Connection refused。
+
+    此函数在 stop 后、start 前各调用一次，确保不留僵尸节点。
+    """
+    venv_python = _resolve_venv_python()
+    if not venv_python.exists():
+        click.echo("  ⚠️  未找到 venv python，跳过 ZK 清理")
+        return
+
+    zk_hosts = getattr(_global_cfg, "zk_hosts", "localhost:2181")
+    namespace = getattr(_global_cfg, "zk_namespace", "dfecrab")
+
+    cleanup_code = f"""
+from kazoo.client import KazooClient
+zk = KazooClient(hosts="{zk_hosts}", timeout=5.0)
+zk.start()
+base = "/{namespace}/services"
+if zk.exists(base):
+    for svc in zk.get_children(base):
+        if svc in ("manager_agent", "worker_agent") or svc.endswith("_agent"):
+            path = f"{{base}}/{{svc}}"
+            if zk.exists(path):
+                for child in zk.get_children(path):
+                    zk.delete(f"{{path}}/{{child}}")
+                    print(f"  已删除残留节点: {{svc}}/{{child}}")
+zk.stop()
+"""
+    try:
+        result = subprocess.run(
+            [str(venv_python), "-c", cleanup_code],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0:
+            for line in (result.stdout or "").strip().split("\n"):
+                if line:
+                    click.echo(f"  {line}")
+            if not (result.stdout or "").strip():
+                click.echo("  （无残留节点，无需清理）")
+        else:
+            click.echo(f"  ⚠️  ZK 清理失败（{result.stderr.strip()[:200]}），可忽略")
+    except Exception as e:
+        click.echo(f"  ⚠️  ZK 清理异常: {e}，可忽略")
+
+
+@cli.command()
+def stop():
+    """停止 Gateway + Agent 服务（知识库和 MCP 保持运行，需单独停止）"""
+    import signal
+    import os
+    import time
+    
+    click.echo("🛑 正在停止 DFEcrab 所有服务...")
+    click.echo("   （知识库API为独立服务，不随主服务停止；如需停止请执行 ./dfecrab stop-knowledge）")
+    click.echo("   （本地 MCP 服务为独立服务，不随主服务停止；如需停止请执行 ./dfecrab stop-mcp）")
+
+    # 查找并停止 DFEcrab 相关进程
+    processes_to_stop = [
+        "start_gateway_grpc.py",
+        "manager_agent_grpc.py",
+        "agent_service_grpc.py"
+    ]
+    
+    # 获取进程PID列表（去重）
+    def get_pids():
+        pids = set()
+        try:
+            import psutil
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = ' '.join(proc.info.get('cmdline') or [])
+                    if any(p in cmdline for p in processes_to_stop):
+                        pids.add(proc.info['pid'])
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except ImportError:
+            for proc_name in processes_to_stop:
+                result = subprocess.run(
+                    ["pgrep", "-f", proc_name],
+                    capture_output=True, text=True
+                )
+                if result.returncode == 0:
+                    for pid in result.stdout.strip().split('\n'):
+                        if pid.strip():
+                            pids.add(int(pid.strip()))
+        return pids
+    
+    # 三轮回合：1轮SIGTERM，2轮SIGKILL
+    for round_num in range(3):
+        pids = get_pids()
+        if not pids:
+            break
+        
+        sig = signal.SIGTERM if round_num == 0 else signal.SIGKILL
+        sig_name = "SIGTERM" if round_num == 0 else "SIGKILL"
+        
+        for pid in pids:
+            try:
+                os.kill(pid, sig)
+                click.echo(f"  第{round_num+1}轮({sig_name}): 已停止 PID {pid}")
+            except ProcessLookupError:
+                pass  # 进程已不存在
+            except PermissionError:
+                click.echo(f"  ⚠️  无权限停止 PID {pid}")
+            except Exception as e:
+                click.echo(f"  ⚠️  停止 PID {pid} 失败: {e}")
+        
+        time.sleep(1)
+    
+    # 最终确认
+    remaining = get_pids()
+    if remaining:
+        click.echo(f"⚠️  警告：仍有 {len(remaining)} 个进程残留: {sorted(remaining)}")
+        click.echo("   请手动执行: pkill -9 -f start_gateway_grpc.py")
+    else:
+        click.echo("✅ 所有 DFEcrab 进程已清理完毕")
+    
+    # 清理 ZK 残留临时节点（无论是否还有进程残留，都尝试清理）
+    click.echo("🧹 清理 Zookeeper 残留临时节点...")
+    _cleanup_zk()
+
+
+# 服务名 → 脚本文件名 的显式对应（服务名与脚本文件名可能不一致，如 alert_judge_tools）。
+# 供 start() 启动与 stop_mcp() 停止共用，避免两处别名定义漂移。
+_MCP_SCRIPT_ALIASES = {
+    "demo": "mcp_demo.py",
+    "alert_judge_tools": "mcp_alert_judge.py",
+    "blackxml_topology": "blackxml_topology.py",
+}
+
+
+def _kill_processes_by_cmdline(patterns, label):
+    """按命令行匹配停止进程（三轮 SIGTERM -> SIGKILL）。
+
+    patterns: list[str]，匹配进程 cmdline 子串（如 "mcp_servers/mcp_demo.py"）。
+    与 stop() 逻辑一致，供 stop_mcp / stop_knowledge 复用，避免重复代码。
+    """
+    import signal
+    import os
+    import time
+
+    def get_pids():
+        pids = set()
+        try:
+            import psutil
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = ' '.join(proc.info.get('cmdline') or [])
+                    if any(p in cmdline for p in patterns):
+                        pids.add(proc.info['pid'])
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except ImportError:
+            for pat in patterns:
+                result = subprocess.run(
+                    ["pgrep", "-f", pat], capture_output=True, text=True
+                )
+                if result.returncode == 0:
+                    for pid in result.stdout.strip().split('\n'):
+                        if pid.strip():
+                            pids.add(int(pid.strip()))
+        return pids
+
+    click.echo(f"🛑 正在停止{label}相关进程...")
+    for round_num in range(3):
+        pids = get_pids()
+        if not pids:
+            break
+        sig = signal.SIGTERM if round_num == 0 else signal.SIGKILL
+        sig_name = "SIGTERM" if round_num == 0 else "SIGKILL"
+        for pid in pids:
+            try:
+                os.kill(pid, sig)
+                click.echo(f"  第{round_num + 1}轮({sig_name}): 已停止 PID {pid}")
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                click.echo(f"  ⚠️  无权限停止 PID {pid}")
+            except Exception as e:
+                click.echo(f"  ⚠️  停止 PID {pid} 失败: {e}")
+        time.sleep(1)
+
+    remaining = get_pids()
+    if remaining:
+        click.echo(f"⚠️  警告：仍有 {len(remaining)} 个进程残留: {sorted(remaining)}")
+        click.echo("   请手动执行: pkill -9 -f <进程名>")
+    else:
+        click.echo(f"✅ {label}相关进程已清理完毕")
+
+
+@cli.command()
+def stop_mcp():
+    """停止所有本地 MCP 服务（demo / alert_judge_tools / blackxml_topology 等）"""
+    import json
+    mcp_scripts = []
+    mcp_cfg_path = project_root / "config" / "mcporter.json"
+    if mcp_cfg_path.exists():
+        mcp_cfg = json.loads(mcp_cfg_path.read_text(encoding="utf-8"))
+        for svc_name in (mcp_cfg.get("mcpServers") or {}):
+            cand = _MCP_SCRIPT_ALIASES.get(svc_name) or f"{svc_name}.py"
+            mcp_scripts.append(f"mcp_servers/{cand}")
+    if not mcp_scripts:
+        mcp_scripts = [
+            "mcp_servers/mcp_demo.py",
+            "mcp_servers/mcp_alert_judge.py",
+            "mcp_servers/blackxml_topology.py",
+            "mcp_servers/mcp_weather.py",
+        ]
+    _kill_processes_by_cmdline(mcp_scripts, "MCP 服务")
+
+
+@cli.command()
+def stop_knowledge():
+    """停止知识库 API 服务（端口 6788）"""
+    _kill_processes_by_cmdline(
+        ["start_knowledge_api.py", "knowledge_api.py"], "知识库 API"
+    )
+
+
+@cli.command()
+@click.pass_context
+def stopall(ctx):
+    """停止所有服务（Gateway + Agent + 知识库 + MCP），并清理 Zookeeper 残留节点"""
+    click.echo("🛑 正在停止 DFEcrab 全部服务...")
+    click.echo("   （范围：Gateway / Agent 服务 + 知识库API + 本地 MCP 服务）")
+    click.echo("")
+    # 依次调用各子命令，复用现有停止逻辑，避免重复实现
+    ctx.invoke(stop)
+    click.echo("")
+    ctx.invoke(stop_knowledge)
+    click.echo("")
+    ctx.invoke(stop_mcp)
+    click.echo("")
+    click.echo("✅ stopall 完成：全部服务已停止（ZK 残留节点已清理）")
+
+
+@cli.command()
+def start_knowledge():
+    """单独启动知识库 API 服务（端口 6788）"""
+    import time
+    import urllib.request
+    import os
+
+    venv_python = _resolve_venv_python()
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = env.get("PYTHONPATH", "") + f":{project_root}:{project_root}/src"
+    if "LD_LIBRARY_PATH" in os.environ:
+        env["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"]
+
+    def _kb_healthy() -> bool:
+        try:
+            req = urllib.request.Request(f"http://localhost:{_kb_port}/knowledge/health")
+            with urllib.request.urlopen(req, timeout=2) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    click.echo(f"📚 检测知识库API服务 (端口 {_kb_port})...")
+    if _kb_healthy():
+        click.echo("   ✅ 知识库API已在运行")
+        return
+
+    click.echo("   🔧 知识库API未运行，正在启动...")
+    # 启动前诊断索引维度，不一致则自动重建（避免 faiss 维度不匹配）
+    _ensure_kb_index_aligned()
+    click.echo("   ⏳ 等待知识库初始化 (3秒)...")
+    kb_start_script = project_root / "scripts" / "start_knowledge_api.py"
+    try:
+        kb_proc = subprocess.run(
+            [str(venv_python), str(kb_start_script)],
+            cwd=str(project_root),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if kb_proc.returncode == 0 and ("已启动" in (kb_proc.stdout or "") or "已在运行" in (kb_proc.stdout or "")):
+            click.echo("   ✅ 知识库API启动成功")
+        else:
+            click.echo(f"   ⚠️ 知识库API启动可能失败: {(kb_proc.stdout or '').strip()[:200]}")
+    except Exception as e:
+        click.echo(f"   ⚠️ 知识库API启动异常: {e}")
+
+    time.sleep(1)
+    if _kb_healthy():
+        click.echo("   ✅ 知识库API健康")
+    else:
+        click.echo(click.style(
+            "   ⚠️ 知识库API健康检查未通过，可手动排查: tail -f logs/knowledge/knowledge_api.log",
+            fg='yellow'
+        ))
+
+
+@cli.command()
+def start_mcp():
+    """单独启动所有本地 MCP 服务（demo / alert_judge_tools / blackxml_topology 等）"""
+    import time
+    import os
+
+    venv_python = _resolve_venv_python()
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = env.get("PYTHONPATH", "") + f":{project_root}:{project_root}/src"
+
+    def _port_listening(port: int, host: str = "127.0.0.1") -> bool:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            return s.connect_ex((host, port)) == 0
+        finally:
+            s.close()
+
+    click.echo("🔌 检测本地 MCP 服务...")
+    mcp_cfg_path = project_root / "config" / "mcporter.json"
+    if not mcp_cfg_path.exists():
+        click.echo("   未找到 config/mcporter.json，跳过 MCP 启动")
+        return
+
+    try:
+        mcp_cfg = json.loads(mcp_cfg_path.read_text(encoding="utf-8"))
+        mcp_servers = mcp_cfg.get("mcpServers", {})
+        logs_dir = project_root / "logs" / "mcp"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        from config.port_loader import load_local_ports
+        yaml_mcp_ports = (load_local_ports().get("mcp") or {})
+        mcp_dir = project_root / "mcp_servers"
+        started_any = False
+
+        for svc_name, svc_conf in mcp_servers.items():
+            if svc_conf.get("enabled", True) is False:
+                continue
+            base_url = svc_conf.get("baseUrl", "")
+            if not base_url.startswith(("http://127.0.0.1", "http://localhost")):
+                continue
+            from urllib.parse import urlparse
+            parsed = urlparse(base_url)
+            base_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            host = parsed.hostname or "127.0.0.1"
+            yaml_port = yaml_mcp_ports.get(svc_name)
+            if yaml_port is not None and yaml_port != base_port:
+                click.echo(click.style(
+                    f"   ⚠️ MCP[{svc_name}] 端口不一致: gateway.yaml={yaml_port} vs mcporter.json={base_port}，"
+                    f"请先对齐 config/gateway.yaml 的 local_ports.mcp.{svc_name}", fg='yellow'))
+            port = yaml_port if yaml_port is not None else base_port
+
+            if _port_listening(port, host):
+                click.echo(f"   ✅ MCP[{svc_name}] 已在运行 (端口 {port})")
+                continue
+
+            svc_script = None
+            alias_file = _MCP_SCRIPT_ALIASES.get(svc_name)
+            for cand in [alias_file, f"{svc_name}.py", f"mcp_{svc_name}.py"]:
+                if not cand:
+                    continue
+                p = mcp_dir / cand
+                if p.exists():
+                    svc_script = p
+                    break
+            if svc_script is None:
+                click.echo(click.style(
+                    f"   ⚠️ MCP[{svc_name}] 脚本缺失: 未找到 {svc_name} 对应脚本", fg='yellow'))
+                continue
+
+            click.echo(f"   🔧 启动 MCP[{svc_name}] (端口 {port})...")
+            mcp_env = dict(env)
+            mcp_env.pop("PYTHONPATH", None)
+            mcp_env["MCP_PORT"] = str(port)
+            log_file = logs_dir / f"mcp_{svc_name}.log"
+            with open(log_file, "a", encoding="utf-8") as lf:
+                subprocess.Popen(
+                    [str(venv_python), str(svc_script)],
+                    stdout=lf, stderr=lf,
+                    env=mcp_env, start_new_session=True,
+                )
+            started_any = True
+
+        if started_any:
+            click.echo("   二次检测本地 MCP 端口（轮询等待，最长 15 秒）...")
+            for svc_name, svc_conf in mcp_servers.items():
+                if svc_conf.get("enabled", True) is False:
+                    continue
+                base_url = svc_conf.get("baseUrl", "")
+                if not base_url.startswith(("http://127.0.0.1", "http://localhost")):
+                    continue
+                from urllib.parse import urlparse
+                parsed = urlparse(base_url)
+                base_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+                host = parsed.hostname or "127.0.0.1"
+                yaml_port = yaml_mcp_ports.get(svc_name)
+                port = yaml_port if yaml_port is not None else base_port
+                # ★ 轮询等待端口就绪（MCP 冷启动较慢，固定 sleep 会误报失败）
+                if _wait_port_listening(port, host, timeout=15):
+                    click.echo(f"   ✅ MCP[{svc_name}] 启动成功 (端口 {port})")
+                else:
+                    click.echo(click.style(
+                        f"   ⚠️ MCP[{svc_name}] 端口未监听，启动可能失败，日志: logs/mcp/mcp_{svc_name}.log",
+                        fg='yellow'))
+    except Exception as e:
+        click.echo(click.style(
+            f"   ⚠️ 本地 MCP 检测异常: {e}", fg='yellow'))
+
+
+@cli.command()
+def status():
+    """查看 Gateway / 知识库 / MCP 服务运行状态"""
+    try:
+        resp = subprocess.run(
+            ["curl", "-s", f"http://localhost:{_global_cfg.gateway_port}/health"],
+            capture_output=True, text=True, timeout=5
+        )
+
+        if resp.returncode == 0:
+            data = json.loads(resp.stdout)
+            click.echo("\n=== DFEcrab 状态 ===\n")
+            click.echo(f"Gateway: {data.get('gateway', 'unknown')}")
+            click.echo(f"版本: {data.get('version', 'unknown')}")
+            click.echo(f"Manager: {data.get('manager_agent', 'unknown')}")
+            click.echo(f"Workers: {data.get('worker_agents', 0)}")
+            click.echo(f"架构: {data.get('architecture', 'unknown')}")
+            click.echo("")
+        else:
+            click.echo("❌ Gateway 未运行")
+            click.echo("   使用 'dfecrab start' 启动服务")
+    except Exception as e:
+        click.echo(f"❌ 无法连接 Gateway: {e}")
+
+    # 检查知识库API
+    try:
+        resp = subprocess.run(
+            ["curl", "-s", f"http://localhost:{_kb_port}/knowledge/health"],
+            capture_output=True, text=True, timeout=3
+        )
+        if resp.returncode == 0:
+            data = json.loads(resp.stdout)
+            click.echo(f"📚 知识库API: 运行中 (端口 {_kb_port})")
+            click.echo(f"   文档数: {data.get('total_documents', 0)}")
+            click.echo(f"   切片数: {data.get('total_chunks', 0)}")
+        else:
+            click.echo(f"❌ 知识库API: 未运行")
+    except Exception:
+        click.echo(f"❌ 知识库API: 未运行")
+    click.echo("")
+
+    # 检查本地 MCP 服务（扫描 mcporter.json 中 baseUrl 指向本地的服务）
+    import socket
+    try:
+        mcp_cfg_path = project_root / "config" / "mcporter.json"
+        if mcp_cfg_path.exists():
+            mcp_cfg = json.loads(mcp_cfg_path.read_text(encoding="utf-8"))
+            mcp_servers = mcp_cfg.get("mcpServers", {})
+            has_local = False
+            for svc_name, svc_conf in mcp_servers.items():
+                base_url = svc_conf.get("baseUrl", "")
+                if not base_url.startswith(("http://127.0.0.1", "http://localhost")):
+                    continue
+                has_local = True
+                from urllib.parse import urlparse
+                parsed = urlparse(base_url)
+                port = parsed.port or (443 if parsed.scheme == "https" else 80)
+                host = parsed.hostname or "127.0.0.1"
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(1)
+                listening = s.connect_ex((host, port)) == 0
+                s.close()
+                state = "✅ 运行中" if listening else "❌ 未运行"
+                click.echo(f"🔌 MCP[{svc_name}]: {state} (端口 {port})")
+            if not has_local:
+                click.echo("🔌 本地 MCP: 未配置本地服务")
+        else:
+            click.echo("🔌 本地 MCP: 未找到 config/mcporter.json")
+    except Exception:
+        click.echo("🔌 本地 MCP: 检测异常")
+    click.echo("")
+
+
+@cli.command()
+@click.argument('message')
+@click.option('--session-id', '-s', default=None, help='Session ID')
+def chat(message: str, session_id: str):
+    """发送对话消息（通过 Gateway 调用多智能体协同）
+
+    示例:
+        dfecrab chat "帮我写一首关于春天的诗"
+        dfecrab chat "分析这份电网数据，生成报告并保存"
+    """
+    try:
+        payload = {"message": message}
+        if session_id:
+            payload["session_id"] = session_id
+
+        resp = subprocess.run(
+            ["curl", "-s", "-X", "POST", f"http://localhost:{_global_cfg.gateway_port}/api/v2/chat",
+             "-H", "Content-Type: application/json",
+             "-H", "X-User-Id: admin",
+             "-d", json.dumps(payload)],
+            capture_output=True, text=True, timeout=60
+        )
+
+        if resp.returncode == 0:
+            data = json.loads(resp.stdout)
+
+            click.echo("\n=== 执行结果 ===\n")
+            click.echo(f"✅ 成功: {data.get('success', False)}")
+            click.echo(f"Session ID: {data.get('session_id', 'unknown')}")
+            click.echo(f"任务类型: {data.get('task_type', 'unknown')}")
+
+            agents = data.get('agents_used', [])
+            if agents:
+                click.echo(f"使用智能体: {' -> '.join(agents)}")
+
+            click.echo(f"响应时间: {data.get('gateway_elapsed_ms', 0)}ms")
+            click.echo(f"审计日志: {data.get('audit_log_id', 'unknown')}")
+            click.echo("")
+        else:
+            click.echo(f"❌ 请求失败: {resp.stderr}")
+    except Exception as e:
+        click.echo(f"❌ 请求失败: {e}")
+
+
+# ============================================================
+#  知识库子命令 (调用知识库API)
+# ============================================================
+
+@cli.group()
+def kb():
+    """知识库子命令（上传/检索/问答/查看文档/健康检查）"""
+    pass
+
+
+@kb.command()
+@click.argument('file_path', type=click.Path(exists=True))
+@click.option('--category', default='other', help='文档分类')
+@click.option('--title', default=None, help='文档标题')
+def upload(file_path: str, category: str, title: str):
+    """上传文档到知识库"""
+    try:
+        click.echo(f"📤 上传文档: {file_path}")
+        cmd = ["curl", "-s", "-X", "POST", f"http://localhost:{_kb_port}/knowledge/upload",
+               "-F", f"file=@{file_path}", "-F", f"category={category}"]
+        if title:
+            cmd.extend(["-F", f"title={title}"])
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        data = json.loads(result.stdout)
+        if data.get("status") == "success":
+            click.echo(f"✅ 上传成功! 文档ID: {data.get('doc_id')}, 切片数: {data.get('chunk_count')}")
+        else:
+            click.echo(f"❌ 上传失败: {data.get('message')}")
+    except Exception as e:
+        click.echo(f"❌ 上传失败: {e}")
+
+
+@kb.command()
+@click.argument('query')
+@click.option('--top-k', '-k', default=5, help='返回结果数量')
+def search(query: str, top_k: int):
+    """检索知识库内容"""
+    try:
+        click.echo(f"🔍 检索: {query}")
+        payload = json.dumps({"query": query, "top_k": top_k})
+        result = subprocess.run(
+            ["curl", "-s", "-X", "POST", f"http://localhost:{_kb_port}/knowledge/search",
+             "-H", "Content-Type: application/json", "-d", payload],
+            capture_output=True, text=True
+        )
+        data = json.loads(result.stdout)
+        if data.get("status") == "success":
+            results = data.get("results", [])
+            click.echo(f"\n找到 {len(results)} 条结果:\n")
+            for i, item in enumerate(results, 1):
+                click.echo(f"[{i}] {item.get('title')} (相关度: {item.get('score'):.3f})")
+                click.echo(f"    {item.get('content')[:150]}...\n")
+        else:
+            click.echo(f"❌ 检索失败: {data.get('message')}")
+    except Exception as e:
+        click.echo(f"❌ 检索失败: {e}")
+
+
+@kb.command()
+@click.argument('question')
+@click.option('--top-k', '-k', default=5, help='参考文档数量')
+def chat(question: str, top_k: int):
+    """知识库问答"""
+    try:
+        click.echo(f"💬 问题: {question}\n")
+        payload = json.dumps({"question": question, "top_k": top_k})
+        result = subprocess.run(
+            ["curl", "-s", "-X", "POST", f"http://localhost:{_kb_port}/knowledge/chat",
+             "-H", "Content-Type: application/json", "-d", payload],
+            capture_output=True, text=True
+        )
+        data = json.loads(result.stdout)
+        if data.get("status") == "success":
+            click.echo("📝 回答:")
+            click.echo("-" * 60)
+            click.echo(data.get("answer", ""))
+            click.echo("-" * 60)
+        else:
+            click.echo(f"❌ 问答失败: {data.get('message')}")
+    except Exception as e:
+        click.echo(f"❌ 问答失败: {e}")
+
+
+@kb.command()
+def list():
+    """列出所有文档"""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", f"http://localhost:{_kb_port}/knowledge/documents"],
+            capture_output=True, text=True
+        )
+        data = json.loads(result.stdout)
+        if data.get("status") == "success":
+            docs = data.get("documents", [])
+            click.echo(f"\n📚 知识库文档 (共 {len(docs)} 个)\n")
+            for doc in docs:
+                click.echo(f"  [{doc.get('status')}] {doc.get('title')} ({doc.get('chunk_count')} 切片)")
+        else:
+            click.echo(f"❌ {data.get('message')}")
+    except Exception as e:
+        click.echo(f"❌ 获取失败: {e}")
+
+
+@kb.command()
+def stats():
+    """查看统计信息"""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", f"http://localhost:{_kb_port}/knowledge/stats"],
+            capture_output=True, text=True
+        )
+        data = json.loads(result.stdout)
+        if data.get("status") == "success":
+            click.echo("\n📊 知识库统计\n")
+            click.echo(f"文档总数: {data.get('total_documents', 0)}")
+            click.echo(f"切片总数: {data.get('total_chunks', 0)}")
+            click.echo(f"分类: {data.get('by_category', {})}")
+        else:
+            click.echo(f"❌ {data.get('message')}")
+    except Exception as e:
+        click.echo(f"❌ 获取失败: {e}")
+
+
+@kb.command()
+def health():
+    """健康检查"""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", f"http://localhost:{_kb_port}/knowledge/health"],
+            capture_output=True, text=True
+        )
+        data = json.loads(result.stdout)
+        click.echo(f"\n❤️ 知识库状态: {data.get('status')}")
+        click.echo(f"文档数: {data.get('total_documents', 0)}")
+        click.echo(f"切片数: {data.get('total_chunks', 0)}")
+    except Exception as e:
+        click.echo(f"❌ 健康检查失败: {e}")
+
+
+@cli.command()
+def test():
+    """运行集成测试（验证 Gateway / Agent / 知识库 / MCP 链路）"""
+    click.echo("🧪 正在运行 DFEcrab 集成测试...\n")
+
+    result = subprocess.run(
+        [sys.executable, "tests/test_grpc_architecture.py"],
+        cwd=str(project_root),
+        env={**dict(__import__('os').environ), "PYTHONPATH": str(project_root)}
+    )
+
+    if result.returncode == 0:
+        click.echo("\n✅ 所有测试通过！")
+    else:
+        click.echo("\n❌ 部分测试失败", err=True)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    cli()
