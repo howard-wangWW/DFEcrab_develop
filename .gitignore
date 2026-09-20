@@ -68,3 +68,6 @@ node_modules/
 # DRM 透明加密的企业受控文件：git 无读取权限，且禁止外传
 src/agent/loop.py
 src/agent/multi/reflector.py
+
+# 电网拓扑历史快照（运行时数据，1.5万+ 文件，1.5GB）
+mcp_servers/blackxml-topology-mcp/BLACKXML/
