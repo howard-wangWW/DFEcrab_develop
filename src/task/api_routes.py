@@ -31,7 +31,7 @@ from typing import Any, Callable, Dict, Optional
 from src.task.agent_group import AgentGroup
 from src.task.audit import AuditLogger
 from src.task.models import TaskProgress, TaskStatus, TaskType
-from src.task.periodic_scheduler import get_periodic_scheduler
+from src.task.periodic_scheduler import get_periodic_scheduler, preview_schedule
 from src.task.scheduler import TaskPriority, get_task_scheduler
 from src.task.task_manager import get_task_manager
 
@@ -124,6 +124,12 @@ async def handle_create_task(request) -> Dict[str, Any]:
     body: {topic|title*, task_type?, description?, supervisor_agent_id?,
            agent_group_config*, schedule?, require_confirmation?, collaboration_mode?,
            execution_mode?, selected_agents?}
+
+    schedule（task_type=periodic/scheduled 时）：
+        {"cron": "0 9 * * 1", "timezone": "Asia/Shanghai"}   或
+        {"interval_seconds": 3600, "timezone": "Asia/Shanghai"}
+    非法 schedule 直接返回 success=false（错误信息可展示给用户），
+    合法时响应带回 schedule_preview.next_runs（前端可直接显示"下次执行时间"）。
     """
     try:
         body = await _body(request)
@@ -171,6 +177,8 @@ async def handle_create_task(request) -> Dict[str, Any]:
             "manager_recommendation": result.get("manager_recommendation"),
             "available_agents": result.get("available_agents", []),
             "approval_url": result.get("approval_url"),
+            "schedule": result.get("schedule"),
+            "schedule_preview": result.get("schedule_preview"),
             "task": task.to_dict(),
         })
     except Exception as e:
@@ -267,8 +275,13 @@ async def handle_convert_task(request, task_id: Optional[str] = None, **kwargs) 
             "original_task_id": task_id,
             "new_task_id": new_task.task_id,
             "new_task_type": new_task.task_type.value,
+            "schedule": new_task.schedule,
+            "schedule_status": manager.get_schedule_status(new_task.task_id),
             "task": new_task.to_dict(),
         })
+    except ValueError as e:
+        # schedule 非法：返回可读原因，原任务不被转化
+        return _err(str(e))
     except Exception as e:
         logger.error(f"[TaskAPI] 转化任务失败: {e}", exc_info=True)
         return _err(str(e))
@@ -277,7 +290,13 @@ async def handle_convert_task(request, task_id: Optional[str] = None, **kwargs) 
 async def handle_approve_task(request, task_id: Optional[str] = None, **kwargs) -> Dict[str, Any]:
     """POST /api/v2/tasks/{task_id}/approve — 确认/拒绝任务
 
-    body: {approved: bool, approved_by?: str, modified_config?: {agents?: [...], collaboration_mode?: str}}
+    body: {approved: bool, approved_by?: str,
+           modified_config?: {agents?: [...], collaboration_mode?: str,
+                              schedule?: {cron|interval_seconds, timezone}}}
+
+    `modified_config.schedule` 支持"在确认弹窗里由用户直接选时间"：
+    非法时间规则会返回 success=false（任务保持 DRAFT），合法则返回排期结果
+    （schedule_registered / next_run），前端可直接展示"下次执行时间"。
     """
     try:
         task_id = _path_param(request, task_id) or kwargs.get("task_id")
@@ -295,11 +314,21 @@ async def handle_approve_task(request, task_id: Optional[str] = None, **kwargs) 
         )
         if not task:
             return _err(f"任务不存在: {task_id}")
-        return _ok({
+
+        schedule_status = manager.get_schedule_status(task_id)
+        payload = {
             "task_id": task_id,
             "status": task.status.value,
             "message": "任务已确认" if approved else "任务已拒绝",
-        })
+            "schedule_status": schedule_status,
+        }
+        # 周期性任务确认后若未排期，明确告知原因（避免"已确认却没排期"的静默状态）
+        if approved and schedule_status.get("is_scheduled") and not schedule_status.get("registered"):
+            payload["message"] = f"任务已确认，但未排期：{schedule_status.get('error') or '缺少时间规则'}"
+        return _ok(payload)
+    except ValueError as e:
+        # schedule 非法等业务校验错误：返回可读原因，任务状态不变
+        return _err(str(e))
     except Exception as e:
         logger.error(f"[TaskAPI] 审批任务失败: {e}", exc_info=True)
         return _err(str(e))
@@ -600,6 +629,46 @@ async def handle_complete_todo(request, task_id: Optional[str] = None, **kwargs)
         return _err(str(e))
 
 
+async def handle_preview_schedule(request) -> Dict[str, Any]:
+    """GET /api/v2/tasks/schedule/preview — 校验时间规则并预览未来执行时间
+
+    前端"时间选择器 → cron"实现后先调这里：合法则直接拿到 next_runs 展示，
+    不合法则把 error 文案提示给用户（不用自己实现 cron 解析）。
+
+    query（二选一）：
+        cron=0 9 * * 1          5 字段：分 时 日 月 周
+        interval_seconds=3600   固定间隔（秒）
+    可选：
+        timezone=Asia/Shanghai（默认）
+        count=5（1~20，默认 5）
+
+    响应 data:
+        {ok, kind: "cron"|"interval"|null, timezone, error, warning,
+         next_runs: ["2026-09-28T09:00:00+08:00", ...]}
+    """
+    try:
+        schedule: Dict[str, Any] = {}
+        cron = (_qp(request, "cron") or "").strip()
+        interval = (_qp(request, "interval_seconds") or "").strip()
+        if cron:
+            schedule["cron"] = cron
+        if interval:
+            schedule["interval_seconds"] = interval
+        tz = _qp(request, "timezone")
+        if tz:
+            schedule["timezone"] = tz
+        if not schedule:
+            return _err("需提供 cron 或 interval_seconds 之一")
+
+        count = _qint(request, "count", 5)
+        result = preview_schedule(schedule, count=count)
+        # 校验失败仍返回 data（ok=false + error 文案），HTTP 层面保持成功，前端直接取字段
+        return _ok(result, **{k: v for k, v in result.items() if k != "next_runs"})
+    except Exception as e:
+        logger.error(f"[TaskAPI] 预览调度失败: {e}", exc_info=True)
+        return _err(str(e))
+
+
 async def handle_get_stats(request) -> Dict[str, Any]:
     """GET /api/tasks/stats — 任务统计（任务 + 调度 + 待办）"""
     try:
@@ -623,6 +692,7 @@ def get_task_routes() -> Dict[str, Callable]:
     return {
         # V2 任务
         "POST /api/v2/tasks/preview": handle_preview,
+        "GET /api/v2/tasks/schedule/preview": handle_preview_schedule,
         "POST /api/v2/tasks": handle_create_task,
         "GET /api/v2/tasks": handle_list_tasks,
         "GET /api/v2/tasks/{task_id}": handle_get_task,

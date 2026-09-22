@@ -143,6 +143,126 @@ def _now(tz_name: str = DEFAULT_TIMEZONE) -> datetime:
 
 
 # ──────────────────────────────────────────────────────────────
+# 供前端使用的调度校验 / 预览（纯函数，无副作用、不落盘）
+#   目的：让前端用"时间选择器"生成 cron 后先校验并回显下次执行时间，
+#   避免"确认成功但根本没排上"的静默失败。
+# ──────────────────────────────────────────────────────────────
+
+def validate_schedule(schedule: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """校验调度配置。
+
+    Args:
+        schedule: {"cron": "0 9 * * 1", "timezone": "Asia/Shanghai"}
+                  或 {"interval_seconds": 3600, "timezone": "..."}
+
+    Returns:
+        {
+          "ok": bool,
+          "kind": "cron" | "interval" | None,
+          "timezone": str,
+          "error": str,          # ok=False 时的原因（可直接展示给用户）
+          "warning": str,        # 非致命提醒（如时区名无法识别）
+        }
+
+    说明：cron 除语法外还会校验"未来一年内是否可匹配"——例如 `0 0 29 2 *`
+    在非闰年区间会匹配不到，这种表达式注册时会失败，这里提前拦掉。
+    """
+    if not isinstance(schedule, dict):
+        return {
+            "ok": False, "kind": None, "timezone": DEFAULT_TIMEZONE,
+            "error": 'schedule 必须是对象，例如 {"cron": "0 9 * * 1"} 或 {"interval_seconds": 3600}',
+            "warning": "",
+        }
+
+    tz = str(schedule.get("timezone") or DEFAULT_TIMEZONE)
+    warning = "" if _resolve_timezone(tz) is not None else f"时区 {tz!r} 无法识别，将按本机本地时间执行"
+    cron = str(schedule.get("cron") or "").strip()
+    raw_interval = schedule.get("interval_seconds")
+
+    if cron:
+        try:
+            spec = CronSpec(cron)
+        except ValueError as e:
+            return {"ok": False, "kind": "cron", "timezone": tz, "error": str(e), "warning": warning}
+        try:
+            spec.next_after(_now(tz))
+        except ValueError as e:
+            return {
+                "ok": False, "kind": "cron", "timezone": tz,
+                "error": f"该时间规则在未来一年内不会触发（{e}）",
+                "warning": warning,
+            }
+        return {"ok": True, "kind": "cron", "timezone": tz, "error": "", "warning": warning}
+
+    if raw_interval not in (None, "", 0):
+        try:
+            interval = int(raw_interval)
+        except (TypeError, ValueError):
+            return {
+                "ok": False, "kind": "interval", "timezone": tz,
+                "error": f"interval_seconds 必须是整数秒，当前: {raw_interval!r}",
+                "warning": warning,
+            }
+        if interval <= 0:
+            return {"ok": False, "kind": "interval", "timezone": tz,
+                    "error": "interval_seconds 必须大于 0", "warning": warning}
+        return {"ok": True, "kind": "interval", "timezone": tz, "error": "", "warning": warning}
+
+    return {
+        "ok": False, "kind": None, "timezone": tz,
+        "error": "schedule 需含 cron（定时）或 interval_seconds（固定间隔）之一",
+        "warning": warning,
+    }
+
+
+def preview_schedule(schedule: Optional[Dict[str, Any]], count: int = 5,
+                     base: Optional[datetime] = None) -> Dict[str, Any]:
+    """预览未来若干次执行时间（前端用于"下次执行：…"回显）。
+
+    Args:
+        schedule: 同 validate_schedule
+        count: 返回条数（1~20）
+        base: 计算基准时间（默认当前时间；测试可注入固定时间）
+
+    Returns:
+        {"ok", "kind", "timezone", "next_runs": [ISO8601...], "error"}
+    """
+    check = validate_schedule(schedule)
+    if not check["ok"]:
+        return {**check, "next_runs": []}
+
+    # 统一口径：非数字 / <=0 → 默认 5；上限 20（避免一次返回过多）
+    try:
+        count = int(count)
+    except (TypeError, ValueError):
+        count = 5
+    if count <= 0:
+        count = 5
+    count = min(count, 20)
+
+    tz = check["timezone"]
+    start = base or _now(tz)
+    runs: List[str] = []
+    try:
+        if check["kind"] == "cron":
+            spec = CronSpec(str(schedule["cron"]).strip())
+            cursor = start
+            for _ in range(count):
+                cursor = spec.next_after(cursor)
+                runs.append(cursor.isoformat())
+        else:
+            step = timedelta(seconds=int(schedule["interval_seconds"]))
+            cursor = start
+            for _ in range(count):
+                cursor = cursor + step
+                runs.append(cursor.isoformat())
+    except Exception as e:  # noqa: BLE001
+        return {**check, "ok": False, "error": f"预览失败: {e}", "next_runs": []}
+
+    return {**check, "next_runs": runs}
+
+
+# ──────────────────────────────────────────────────────────────
 # Job
 # ──────────────────────────────────────────────────────────────
 

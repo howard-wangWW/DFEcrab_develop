@@ -11,6 +11,7 @@ from pathlib import Path
 from src.task.models import Task, TaskStatus, TaskType, TaskStep, CollaborationMode
 from src.task.manager_agent import ManagerAgent
 from src.task.audit import AuditLogger
+from src.task.periodic_scheduler import preview_schedule, validate_schedule
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,13 @@ class TaskManager:
     ) -> Dict[str, Any]:
         """创建新任务 - 让LLM决定执行模式"""
         task_id = f"task_{uuid.uuid4().hex[:12]}"
+
+        # ★ 定时/周期任务的调度合法性校验（前端用时间选择器生成 cron 后由这里兜底拦截）：
+        #   否则非法 cron 只会在 approve 注册作业时失败，任务却显示"已确认"——静默无排期
+        if task_type in (TaskType.PERIODIC, TaskType.SCHEDULED) and schedule:
+            _check = validate_schedule(schedule)
+            if not _check["ok"]:
+                raise ValueError(f"schedule 非法: {_check['error']}")
         
         manager_recommendation = None
         final_selected_agents = selected_agents or []
@@ -192,7 +200,14 @@ class TaskManager:
             "task": task,
             "manager_recommendation": manager_recommendation,
             "available_agents": self.get_available_agents(),
-            "approval_url": f"/api/v2/tasks/{task_id}/approve" if require_confirmation else None
+            "approval_url": f"/api/v2/tasks/{task_id}/approve" if require_confirmation else None,
+            # ★ 调度回显：前端创建即可展示"下次执行时间"，无需自己推算 cron
+            "schedule": task.schedule,
+            "schedule_preview": (
+                preview_schedule(task.schedule)
+                if task.task_type in (TaskType.PERIODIC, TaskType.SCHEDULED) and task.schedule
+                else None
+            ),
         }
     
     def _create_task_steps_with_mode(self, task_id: str, agent_ids: List[str], mode: str) -> List[TaskStep]:
@@ -389,7 +404,14 @@ class TaskManager:
         return True
     
     def approve_task(self, task_id: str, approved: bool, approved_by: str = "system", modified_config: Optional[Dict] = None) -> Optional[Task]:
-        """确认或拒绝任务"""
+        """确认或拒绝任务
+
+        `modified_config` 支持：
+          - agents            改用这批智能体
+          - collaboration_mode 改协作模式
+          - schedule          改定时/周期（前端在"确认"弹窗里让用户直接填时间后提交）
+        传入的 schedule 会先校验，非法直接抛 ValueError（任务保持 DRAFT，不会出现"确认成功但没排期"）。
+        """
         task = self.get_task(task_id)
         if not task:
             return None
@@ -397,9 +419,18 @@ class TaskManager:
         if task.status != TaskStatus.DRAFT:
             logger.warning(f"任务状态不是DRAFT，当前状态: {task.status}")
             return task
-        
+
+        # ★ 校验待写入的调度配置（在校验失败时保持任务状态不变）
+        _new_schedule = (modified_config or {}).get("schedule")
+        if approved and _new_schedule is not None:
+            _check = validate_schedule(_new_schedule)
+            if not _check["ok"]:
+                raise ValueError(f"schedule 非法: {_check['error']}")
+
         if approved:
             if modified_config:
+                if _new_schedule is not None:
+                    task.schedule = _new_schedule
                 if "agents" in modified_config:
                     task.selected_agents = modified_config["agents"]
                     mode = task.collaboration_mode.value if hasattr(task.collaboration_mode, 'value') else str(task.collaboration_mode)
@@ -453,9 +484,15 @@ class TaskManager:
                     ok = False
                     logger.warning(f"⚠️ schedule 缺少 cron/interval_seconds: {task.task_id}")
                 if not ok:
-                    logger.warning(f"⚠️ 定时任务注册失败: {task.task_id}")
+                    _why = validate_schedule(task.schedule).get("error", "")
+                    logger.warning(f"⚠️ 定时任务注册失败: {task.task_id} {_why}")
             except Exception as e:
                 logger.error(f"❌ 注册定时任务失败: {e}")
+        elif approved and task.task_type.value in ("periodic", "scheduled"):
+            logger.warning(
+                f"⚠️ 定时/周期任务缺少 schedule，未排期: {task.task_id}"
+                "（schedule 需含 cron 或 interval_seconds）"
+            )
         # ==================================================
 
         try:
@@ -470,7 +507,59 @@ class TaskManager:
         self._save_task(task)
         self._save_index()
         return task
-    
+
+    def get_schedule_status(self, task_id: str) -> Dict[str, Any]:
+        """定时/周期任务的排期状态（前端在"确认/暂停/恢复"后回显用）。
+
+        Returns:
+            {
+              "is_scheduled": bool,     # 是否定时/周期类型
+              "registered": bool,       # 是否已在调度器中排期
+              "next_run": str | None,   # 下次执行时间（ISO8601，含时区）
+              "run_count": int,         # 已执行次数
+              "last_error": str,        # 上次执行错误
+              "error": str,             # 未排期的原因（给用户看）
+            }
+
+        用途：避免"任务显示已确认，但实际没有排期"这种静默状态——
+        前端拿到 registered=False 就应提示用户补齐时间规则。
+        """
+        info: Dict[str, Any] = {
+            "is_scheduled": False, "registered": False, "next_run": None,
+            "run_count": 0, "last_error": "", "error": "",
+        }
+        task = self.get_task(task_id)
+        if not task:
+            info["error"] = f"任务不存在: {task_id}"
+            return info
+        if task.task_type.value not in ("periodic", "scheduled"):
+            return info
+        info["is_scheduled"] = True
+
+        check = validate_schedule(task.schedule)
+        if not check["ok"]:
+            info["error"] = f"调度配置缺失或非法：{check['error']}"
+            return info
+        try:
+            from src.task.periodic_scheduler import get_periodic_scheduler
+
+            job = get_periodic_scheduler(str(self.storage_dir)).get_job(task_id)
+        except Exception as e:  # noqa: BLE001
+            info["error"] = f"查询调度器失败: {e}"
+            return info
+        if not job:
+            info["error"] = "尚未排期：请确认任务（approve）后生效"
+            return info
+        info.update({
+            "registered": bool(job.enabled),
+            "next_run": job.next_run or None,
+            "run_count": job.run_count,
+            "last_error": job.last_error or "",
+        })
+        if not job.enabled:
+            info["error"] = "任务已暂停（paused）"
+        return info
+
     def update_task_agents(self, task_id: str, agent_ids: List[str], mode: Optional[str] = None) -> Optional[Task]:
         """更新任务的智能体列表和执行模式"""
         task = self.get_task(task_id)

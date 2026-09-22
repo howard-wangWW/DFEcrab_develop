@@ -410,6 +410,8 @@ def test_route_table():
     expected = {
         "POST /api/v2/tasks", "GET /api/v2/tasks", "GET /api/v2/tasks/{task_id}",
         "DELETE /api/v2/tasks/{task_id}", "POST /api/v2/tasks/preview",
+        # 定时规则校验/预览（前端"时间选择器 → cron"用，2026-09 新增）
+        "GET /api/v2/tasks/schedule/preview",
         "POST /api/v2/tasks/{task_id}/convert", "POST /api/v2/tasks/{task_id}/approve",
         "POST /api/v2/tasks/{task_id}/pause", "POST /api/v2/tasks/{task_id}/resume",
         "POST /api/v2/tasks/{task_id}/trigger", "POST /api/v2/tasks/{task_id}/execute",
