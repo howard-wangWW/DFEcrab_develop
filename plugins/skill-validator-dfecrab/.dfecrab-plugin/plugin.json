@@ -1,0 +1,17 @@
+{
+  "name": "skill-validator-dfecrab",
+  "version": "1.0.0",
+  "description": "技能格式审查工具，检查技能是否符合 OpenClaw 标准，不符合标准的技能无法安装",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "skill-validator-dfecrab",
+      "description": "技能格式审查工具，检查技能是否符合 OpenClaw 标准，不符合标准的技能无法安装",
+      "prompt": "执行技能: skill-validator-dfecrab",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

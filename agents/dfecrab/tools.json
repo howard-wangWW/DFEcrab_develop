@@ -3,11 +3,28 @@
     "memory_maintenance",
     "list_dir",
     "word_read",
-    "file_read",
+    "read_file",
+    "bash_tool",
     "weather",
     "excel-read",
     "web-fetch",
     "dm_query",
-    "image_gen"
+    "skill"
+  ],
+  "enabled_mcp_servers": [
+    "demo"
+  ],
+  "custom_tools": [],
+  "builtin_tools": [
+    "memory_maintenance",
+    "list_dir",
+    "word_read",
+    "read_file",
+    "bash_tool",
+    "weather",
+    "excel-read",
+    "web-fetch",
+    "dm_query",
+    "skill"
   ]
 }

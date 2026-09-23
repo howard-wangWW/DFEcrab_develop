@@ -1,0 +1,17 @@
+{
+  "name": "get-weekday",
+  "version": "1.0.0",
+  "description": "获取今天是星期几",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "get-weekday",
+      "description": "获取今天是星期几",
+      "prompt": "执行技能: get-weekday",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

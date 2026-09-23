@@ -1,0 +1,17 @@
+{
+  "name": "get-time",
+  "version": "1.0.0",
+  "description": "获取当前系统时间",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "get-time",
+      "description": "获取当前系统时间",
+      "prompt": "执行技能: get-time",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

@@ -1,0 +1,17 @@
+{
+  "name": "excel-read",
+  "version": "1.0.0",
+  "description": "MUST be used when user asks to \"read Excel\", \"open Excel file\", \"view xlsx\", \"读取 Excel\". This is the primary skill for handling Excel files.",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "excel-read",
+      "description": "MUST be used when user asks to \"read Excel\", \"open Excel file\", \"view xlsx\", \"读取 Excel\". This is the primary skill for handling Excel files.",
+      "prompt": "执行技能: excel-read",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

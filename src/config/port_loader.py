@@ -118,19 +118,51 @@ def knowledge_upload_max_mb(default: int = 50) -> int:
 
 
 def knowledge_chunk_config(default: Optional[Dict] = None) -> Dict:
-    """知识库运行参数（切片 + 召回）单一读取入口。
+    """知识库运行参数（切片 + 召回 + 入库 + 索引 + 问答）单一读取入口。
 
     优先读 gateway.yaml 顶层 knowledge 段；缺失项用内置默认值兜底。
     返回: {chunk_size, chunk_overlap, min_chunk_size, table_rows_per_chunk,
-           qa_pair_keep, filter_overfetch}
+          qa_pair_keep, filter_overfetch, image_neighbor_radius,
+          max_per_doc, retrieve_overfetch, keyword_search_mode, keyword_max_df_ratio,
+          embed_batch_size, index_type, ivf_threshold, ivf_nlist, ivf_nprobe,
+          qa_enable_thinking, qa_temperature, qa_top_k, qa_max_per_doc,
+          qa_max_context_chunks}
+
+    注：本函数是**多条链路共用**的单一入口 ——
+        · 知识库入库/检索链路（image_neighbor_radius、filter_overfetch、
+          keyword_*、index_type/ivf_*、embed_batch_size）
+        · 知识库问答链路（qa_* 五参数，经 src/knowledge/llm/config_loader.py 装配）
+    2026-09-14 合并：此前两方各持一份同名函数互相覆盖，现统一到这一份。
     """
     cfg: Dict = {
+        # 切片
         "chunk_size": 450,
         "chunk_overlap": 90,
         "min_chunk_size": 50,
         "table_rows_per_chunk": 20,
         "qa_pair_keep": True,
+        # 召回
         "filter_overfetch": 6,
+        # 图片片不参与检索，靠「同文档内 ±N 片范围的正文命中后附带」被带出；
+        # 0 = 关闭带图（只带命中片自身的图）。
+        "image_neighbor_radius": 1,
+        "max_per_doc": 2,
+        "retrieve_overfetch": 4,
+        "keyword_search_mode": "index",
+        "keyword_max_df_ratio": 0.5,
+        # 入库
+        "embed_batch_size": 100,
+        # 向量索引
+        "index_type": "auto",
+        "ivf_threshold": 500000,
+        "ivf_nlist": 0,
+        "ivf_nprobe": 16,
+        # 问答生成参数（场景级）：qa_enable_thinking=None 表示不下发该字段（其他现场零影响）
+        "qa_enable_thinking": None,
+        "qa_temperature": 0.2,
+        "qa_top_k": 5,
+        "qa_max_per_doc": 2,
+        "qa_max_context_chunks": 5,
     }
     if default:
         cfg.update(default)
@@ -149,10 +181,101 @@ def knowledge_chunk_config(default: Optional[Dict] = None) -> Dict:
 
     # 类型规整（防止 YAML 写成字符串等）
     for key in ("chunk_size", "chunk_overlap", "min_chunk_size",
-                "table_rows_per_chunk", "filter_overfetch"):
+                "table_rows_per_chunk", "filter_overfetch", "image_neighbor_radius",
+                "max_per_doc", "retrieve_overfetch", "embed_batch_size",
+                "ivf_threshold", "ivf_nlist", "ivf_nprobe",
+                "qa_top_k", "qa_max_per_doc", "qa_max_context_chunks"):
         try:
             cfg[key] = int(cfg[key])
         except (TypeError, ValueError):
             pass
+    for key in ("keyword_max_df_ratio", "qa_temperature"):
+        try:
+            cfg[key] = float(cfg[key])
+        except (TypeError, ValueError):
+            pass
     cfg["qa_pair_keep"] = bool(cfg["qa_pair_keep"])
+    # None 表示"不下发该字段"（未配置的现场零影响），其余按布尔规整
+    if cfg["qa_enable_thinking"] is not None:
+        cfg["qa_enable_thinking"] = bool(cfg["qa_enable_thinking"])
+    # 模式串归一（大小写/空白容错）
+    mode = str(cfg.get("keyword_search_mode") or "index").strip().lower()
+    cfg["keyword_search_mode"] = mode if mode in ("index", "scan") else "index"
+    itype = str(cfg.get("index_type") or "auto").strip().lower()
+    cfg["index_type"] = itype if itype in ("auto", "flat", "ivf") else "auto"
+    return cfg
+
+
+# OCR 配置默认值（gateway.yaml 的 knowledge.ocr 段缺失时逐项兜底）
+# ★ enabled 默认 False（2026-09-11 改，此前为 True）：现场反馈「用 OCR 文本做图片索引
+#   效果不好」——界面截图 / SCADA 系统图里大部分文字与上下文无关，按检测框输出的
+#   破碎文本命中率低、还把噪声引进检索；且 15 图的手册要跑半分钟。
+#   现改为：图片只落盘给前端看，靠「邻近正文片被搜到时附带」被带出
+#   （src/knowledge/core/neighbors.py）。
+#   要开回来：环境变量 KNOWLEDGE_OCR_ENABLED=true，或 gateway.yaml 的
+#   knowledge.ocr.enabled: true（引擎代码一行没删）。注意开了也只是进检索位，
+#   不进正文，且图片片已不进索引——需一并把 neighbors 那套关掉才回到批次 19 行为。
+_DEFAULT_OCR_CONFIG = {
+    "enabled": False,
+    "max_images": 50,
+    "max_pages": 50,
+    "min_image_px": 64,
+    "pdf_text_threshold": 20,
+    "dpi": 200,
+}
+
+# 需要按整数处理的键（yaml 里被写成字符串时做一次防御性转换）
+_OCR_INT_KEYS = ("max_images", "max_pages", "min_image_px", "pdf_text_threshold", "dpi")
+
+
+def knowledge_ocr(default: Optional[Dict] = None) -> Dict:
+    """知识库 OCR 配置（gateway.yaml 顶层 knowledge.ocr 段）。
+
+    返回**已合并默认值**的完整配置，调用方无需再逐个兜底：
+        {
+            "enabled": False,            # 总开关，默认关（见 _DEFAULT_OCR_CONFIG 注释）
+            "max_images": 50,            # 单文档最多 OCR 图片数
+            "max_pages": 50,             # 扫描版 PDF 最多 OCR 页数
+            "min_image_px": 64,          # 小于该边长的图片跳过
+            "pdf_text_threshold": 20,    # 页面文本少于该字数视为扫描页
+            "dpi": 200,                  # 扫描页渲染精度
+        }
+
+    读取顺序（与既有函数同范式）：
+        环境变量 KNOWLEDGE_OCR_ENABLED（仅覆盖总开关，便于不改编排地应急关闭）
+        → gateway.yaml 的 knowledge.ocr 段
+        → default（缺省用本模块内置默认值）
+
+    说明：既有 knowledge_upload_max_mb 是「一 key 一函数」；OCR 有 6 个参数，
+    逐个建函数过于啰嗦，故改为一个函数返回整段 dict（经权衡的偏离，仍只维护
+    这一个读取器，不新增第三个 config reader）。
+    """
+    cfg: Dict = dict(_DEFAULT_OCR_CONFIG)
+    if default:
+        cfg.update(default)
+
+    path = _find_project_root() / "config" / "gateway.yaml"
+    if path.exists():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            section = (data.get("knowledge") or {}).get("ocr") or {}
+            if isinstance(section, dict):
+                cfg.update(section)
+        except Exception:
+            pass
+
+    # 数值键防御性转换：yaml 里写成 "50" 之类的字符串也不至于让比较逻辑炸掉
+    for key in _OCR_INT_KEYS:
+        try:
+            cfg[key] = int(cfg[key])
+        except (KeyError, TypeError, ValueError):
+            cfg[key] = int(_DEFAULT_OCR_CONFIG[key])
+
+    # 总开关的环境变量覆盖
+    env_val = os.environ.get("KNOWLEDGE_OCR_ENABLED")
+    if env_val is not None:
+        cfg["enabled"] = env_val.strip().lower() in ("1", "true", "yes", "on")
+
+    cfg["enabled"] = bool(cfg.get("enabled", False))
     return cfg

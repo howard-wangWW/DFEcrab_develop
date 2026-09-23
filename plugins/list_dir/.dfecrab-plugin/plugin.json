@@ -1,0 +1,17 @@
+{
+  "name": "list_dir",
+  "version": "1.0.0",
+  "description": "",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "list_dir",
+      "description": "",
+      "prompt": "执行技能: list_dir",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

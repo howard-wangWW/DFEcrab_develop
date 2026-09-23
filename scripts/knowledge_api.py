@@ -25,8 +25,10 @@ logging.basicConfig(
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
+import re
 import uvicorn
 import json
 import logging
@@ -151,12 +153,17 @@ async def upload_document(
         if total == 0:
             raise HTTPException(400, "文件为空")
 
+        # upload_document 是同步且 CPU 密集（解析 + 可选 OCR）。直接调用会阻塞
+        # uvicorn 的事件循环——一个扫描件 OCR 期间，整个知识库连 /health 都不响应。
+        # 交给线程池执行，保持事件循环可用。
+        from starlette.concurrency import run_in_threadpool
         service = get_knowledge_service()
-        result = service.upload_document(
+        result = await run_in_threadpool(
+            service.upload_document,
             temp_path=str(temp_path),
             filename=file.filename or safe_name,
             category=category,
-            title=title
+            title=title,
         )
 
         if result["status"] == "error":
@@ -297,6 +304,51 @@ async def delete_document(doc_id: str):
         raise HTTPException(500, str(e))
 
 
+# ── 取图 ────────────────────────────────────────────────
+# 切片正文里是【图片：NNN.ext】占位块，原图从这里取给前端渲染。
+# 图片名由加载器生成（三位序号 + 扩展名），白名单足够；doc_id 里含用户自定义的
+# 分类名，现场在用的是中文（如「接口文档」），**不能**按 ASCII 白名单卡 ——
+# 改为显式拒绝路径分隔符/上跳，再用 resolve() 做包含性校验（双保险）。
+_MEDIA_NAME_RE = re.compile(r'^[0-9]{3}\.(png|jpg|jpeg|gif|bmp|webp)$')
+_MEDIA_TYPES = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".bmp": "image/bmp", ".webp": "image/webp",
+}
+
+
+def _resolve_media_file(doc_id: str, name: str) -> Path:
+    """解析并校验取图路径。任何不合规或越界一律 404（不区分"不存在"与"非法"）"""
+    if not _MEDIA_NAME_RE.match(name):
+        raise HTTPException(404, "图片不存在")
+    if (not doc_id or "/" in doc_id or "\\" in doc_id
+            or ".." in doc_id or "\x00" in doc_id):
+        raise HTTPException(404, "图片不存在")
+
+    service = get_knowledge_service()
+    repo = getattr(service, "repo", None)
+    if repo is None:
+        raise HTTPException(404, "图片不存在")
+
+    media_root = repo.media_dir.resolve()
+    target = (media_root / doc_id / name).resolve()
+    # 双保险：即便上面的字符检查有遗漏，越界也一律拒掉
+    if media_root not in target.parents or not target.is_file():
+        raise HTTPException(404, "图片不存在")
+    return target
+
+
+@router.get("/media/{doc_id}/{name}")
+async def get_media(doc_id: str, name: str):
+    """取文档内嵌图片（对应切片 metadata.images[].url）"""
+    path = _resolve_media_file(doc_id, name)
+    return FileResponse(
+        path,
+        media_type=_MEDIA_TYPES.get(path.suffix.lower(), "application/octet-stream"),
+        # doc_id 由文件内容 md5 派生，图片只增不改，可放心长缓存
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @router.get("/stats")
 async def get_stats():
     """获取统计信息"""
@@ -332,6 +384,7 @@ def run(host: str = "0.0.0.0", port: Optional[int] = None):
     print(f"  POST /knowledge/chat                  - 问答对话")
     print(f"  GET  /knowledge/documents                 - 列出文档")
     print(f"  GET  /knowledge/documents/{{doc_id}}/chunks - 查看切片")
+    print(f"  GET  /knowledge/media/{{doc_id}}/{{name}}    - 取文档内嵌图片")
     print(f"  GET  /knowledge/knowledge-bases           - 列出知识库")
     print(f"  DELETE /knowledge/documents/{{id}}    - 删除文档")
     print(f"  GET  /knowledge/stats                 - 统计信息")

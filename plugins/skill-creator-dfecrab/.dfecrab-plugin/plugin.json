@@ -1,0 +1,17 @@
+{
+  "name": "skill-creator-dfecrab",
+  "version": "1.0.0",
+  "description": "DFEcrab 技能创建工具，可以快速生成符合 OpenClaw 标准的技能目录结构和模板文件",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "skill-creator-dfecrab",
+      "description": "DFEcrab 技能创建工具，可以快速生成符合 OpenClaw 标准的技能目录结构和模板文件",
+      "prompt": "执行技能: skill-creator-dfecrab",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

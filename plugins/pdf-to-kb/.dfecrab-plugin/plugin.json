@@ -1,0 +1,17 @@
+{
+  "name": "pdf-to-kb",
+  "version": "1.0.0",
+  "description": "",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "pdf-to-kb",
+      "description": "",
+      "prompt": "执行技能: pdf-to-kb",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

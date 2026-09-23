@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.knowledge.storage.document_repo import DocumentRepository
 from src.knowledge.embedding.local_embedder import LocalEmbedder
 from src.knowledge.core.vector_store import VectorStore
+from src.knowledge.core.document_processor import filter_indexable
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -37,7 +38,7 @@ def rebuild_index(batch_size: int = 100):
             if chunks_path.exists():
                 try:
                     with open(chunks_path, 'r', encoding='utf-8') as f:
-                        chunks = json.load(f)
+                        chunks = filter_indexable(json.load(f))
                         for chunk in chunks:
                             chunk["metadata"]["title"] = doc_info.title
                             chunk["metadata"]["category"] = doc_info.category
@@ -56,7 +57,12 @@ def rebuild_index(batch_size: int = 100):
     try:
         # 使用本地嵌入
         embedder = LocalEmbedder()
-        contents = [c["content"] for c in all_chunks]
+        # 嵌入统一取「检索位」metadata["content"]（图片片已被 filter_indexable 剔除，
+        # 它们不进索引，靠检索后邻近带出）
+        contents = [
+            (c.get("metadata") or {}).get("content") or c["content"]
+            for c in all_chunks
+        ]
         
         # 分批生成向量
         all_embeddings = []

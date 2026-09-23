@@ -22,6 +22,11 @@ class OpenAICompatibleClient:
         self.timeout = config.get("timeout", 300)
         # 单次生成的最大 token 数（调大，避免长回答被截断）
         self.max_tokens = config.get("max_tokens", 4096)
+        # 生成温度（由场景级配置注入，默认 0.2；不再写死在请求体里）
+        self.temperature = float(config.get("temperature", 0.2))
+        # ★ 思考开关（Qwen3 等混合思考模型）：None=不下发该字段（其他现场/模型零影响）；
+        #   False/True → 下发 chat_template_kwargs.enable_thinking，从源头控制是否生成思考
+        self.enable_thinking = config.get("enable_thinking")
 
     def _headers(self) -> dict:
         headers = {"Content-Type": "application/json"}
@@ -29,20 +34,30 @@ class OpenAICompatibleClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
+    def _payload(self, prompt: str, stream: bool = False) -> dict:
+        """统一构造请求体（chat / stream_chat 共用，避免两处重复拼装）"""
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+        }
+        if stream:
+            payload["stream"] = True
+        # ★ 思考开关：仅在显式配置时下发（未配置的现场请求体与历史行为完全一致）
+        if self.enable_thinking is not None:
+            payload["chat_template_kwargs"] = {"enable_thinking": bool(self.enable_thinking)}
+        return payload
+
     def chat(self, prompt: str) -> str:
         """单轮生成，返回文本回答"""
         logger.info(f"[LLM] POST {self.api_base}/chat/completions model={self.model_name} "
-                    f"prompt_len={len(prompt)}")
+                    f"prompt_len={len(prompt)} enable_thinking={self.enable_thinking}")
         _t0 = __import__("time").time()
         resp = httpx.post(
             f"{self.api_base}/chat/completions",
             headers=self._headers(),
-            json={
-                "model": self.model_name,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
-                "max_tokens": self.max_tokens,
-            },
+            json=self._payload(prompt),
             timeout=self.timeout,
         )
         resp.raise_for_status()
@@ -66,13 +81,7 @@ class OpenAICompatibleClient:
             "POST",
             f"{self.api_base}/chat/completions",
             headers=self._headers(),
-            json={
-                "model": self.model_name,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
-                "max_tokens": self.max_tokens,
-                "stream": True,
-            },
+            json=self._payload(prompt, stream=True),
             timeout=self.timeout,
         ) as resp:
             resp.raise_for_status()

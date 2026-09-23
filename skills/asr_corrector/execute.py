@@ -203,7 +203,14 @@ def _correct_by_model(text: str) -> Tuple[str, List[Dict]]:
         if os.path.exists(config_path):
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                # ★ 模型统一在 model_providers 段：取第一个 enabled（顶层 model 段已移除）
+                # 优先使用主模型配置
+                if config.get("model", {}).get("api_base"):
+                    api_base = config["model"]["api_base"].rstrip("/v1") + "/v1"
+                # 如果主模型不可用，尝试使用第一个启用的 model_provider
+                if config.get("model", {}).get("model_name"):
+                    model_name = config["model"]["model_name"]
+                
+                # 检查 model_providers 中是否有启用的
                 for prov_name, prov_cfg in config.get("model_providers", {}).items():
                     if prov_cfg.get("enabled", False) and prov_cfg.get("model_name"):
                         api_base = prov_cfg["api_base"]

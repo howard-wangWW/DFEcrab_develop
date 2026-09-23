@@ -1,0 +1,17 @@
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "description": "Get current weather and forecasts (no API key required).",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "weather",
+      "description": "Get current weather and forecasts (no API key required).",
+      "prompt": "执行技能: weather",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

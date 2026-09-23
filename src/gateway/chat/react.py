@@ -170,6 +170,16 @@ class ReactDomainMixin:
             except Exception as e:
                 react_logger.warning(f"[ReAct] 时间上下文生成失败: {e}")
 
+            # ★ 沙箱工具移植（深圳现场）：登记请求级会话上下文。
+            #   ToolRegistry.execute_tool 只透传模型参数，工具函数本身取不到 session_id；
+            #   沙箱工具（bash_tool / read_file）需要它来定位本会话的附件与工作区。
+            #   用 locals() 取值以兼容不同版本的变量命名。
+            try:
+                from src.sandbox.context import set_request_context_from_locals
+                set_request_context_from_locals(locals())
+            except Exception as e:
+                react_logger.warning(f"[Sandbox] 请求上下文登记失败（忽略继续）: {e}")
+
             # ★ 批次12-C2：会话附件自动注入（本会话 active 附件摘要进上下文）。
             #   生命周期对齐 LibreChat：上传即挂会话 → 每轮自动带上 → 叉掉/删除后不再注入
             #   （build_session_context 只取 status=active；删会话由 delete_session 联动清理）。

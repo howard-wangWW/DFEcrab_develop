@@ -5,6 +5,8 @@
 from typing import List, Dict, Tuple, Optional
 import numpy as np
 import math
+from .keyword_index import KeywordIndex, search_scan
+from .ranking import compute_fetch_k, diversify_by_doc
 from .vector_store import VectorStore
 from ..embedding.local_embedder import LocalEmbedder
 from .reranker import Reranker, get_reranker
@@ -13,35 +15,62 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _kn_cfg() -> Dict:
+    """知识库调优参数（gateway.yaml 的 knowledge 段）；读取失败时用安全默认值"""
+    try:
+        from config.port_loader import knowledge_chunk_config
+        return knowledge_chunk_config()
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 class HybridRetriever:
-    """混合检索器"""
-    
-    def __init__(self, 
+    """混合检索器（向量 + 关键词 + 可选重排）
+
+    大库（十万级切片）关键设计：
+      - 关键词检索走**倒排索引**（构建一次，查询只扫候选），避免每次查询全量分词
+      - 候选先放大（top_k × max_per_doc × overfetch）再做同文档限流，防止"限流后结果不足"
+    """
+
+    def __init__(self,
                  vector_store: VectorStore,
                  embedder: LocalEmbedder,
                  use_rerank: bool = False,
-                 max_per_doc: int = 2):
+                 max_per_doc: Optional[int] = None,
+                 overfetch: Optional[int] = None,
+                 keyword_search_mode: Optional[str] = None):
         """
         Args:
             vector_store: 向量存储
             embedder: 嵌入模型
             use_rerank: 是否使用重排序（本地模式建议关闭）
-            max_per_doc: 同一文档最多保留的切片数（召回多样性，避免单篇霸占）
+            max_per_doc: 同一文档最多保留的切片数（None=读 gateway.yaml，默认 2；<=0 不限流）
+            overfetch: 候选放大倍数（None=读 gateway.yaml，默认 4）
+            keyword_search_mode: index=倒排索引 / scan=逐片全扫（None=读 gateway.yaml）
         """
+        cfg = _kn_cfg()
         self.vector_store = vector_store
         self.embedder = embedder
         self.use_rerank = use_rerank
-        self.max_per_doc = max_per_doc
+        self.max_per_doc = int(cfg.get("max_per_doc", 2) if max_per_doc is None else max_per_doc)
+        self.overfetch = int(cfg.get("retrieve_overfetch", 4) if overfetch is None else overfetch)
+        mode = keyword_search_mode or cfg.get("keyword_search_mode", "index")
+        self.keyword_search_mode = str(mode).strip().lower()
+        self.keyword_max_df_ratio = float(cfg.get("keyword_max_df_ratio", 0.5))
         # ★ C-1：reranker 进程级单例（重复 new 会重复加载 CrossEncoder）
         self.reranker = get_reranker() if use_rerank else None
-        
+
         # 构建文本缓存
         self.texts = []
         self.text_to_idx = {}
+        self._kw_index = KeywordIndex(
+            tokenizer=self.embedder._tokenize,
+            max_df_ratio=self.keyword_max_df_ratio,
+        )
         self._build_text_cache()
-    
+
     def _build_text_cache(self):
-        """构建文本缓存"""
+        """构建文本缓存（并为新语料重置关键词索引，改为惰性重建）"""
         self.texts = []
         self.text_to_idx = {}
         for idx, metadata in enumerate(self.vector_store.metadatas):
@@ -50,25 +79,41 @@ class HybridRetriever:
             chunk_id = self.vector_store.chunk_ids[idx] if idx < len(self.vector_store.chunk_ids) else None
             if chunk_id:
                 self.text_to_idx[chunk_id] = idx
+        # 语料变化 → 倒排索引失效，下次查询时重建（避免这里阻塞热刷新路径）
+        self._kw_index = KeywordIndex(
+            tokenizer=self.embedder._tokenize,
+            max_df_ratio=self.keyword_max_df_ratio,
+        )
+
+    def warmup_keyword_index(self) -> bool:
+        """预热关键词倒排索引（索引重建完成后在后台线程调用，避免首个用户查询变慢）"""
+        if self.keyword_search_mode != "index" or not self.texts:
+            return False
+        return self._kw_index.ensure_built(self.texts)
     
     def search(self, query: str, top_k: int = 10) -> List[Dict]:
         """混合检索"""
-        if len(self.vector_store.chunk_ids) == 0:
+        total = len(self.vector_store.chunk_ids)
+        if total == 0:
             return []
-        
+
+        # ★ 候选放大：大库里单篇大文档会霸占 top-N，限流后结果不足，故先取
+        #   top_k × max_per_doc × overfetch 再限流（小库无副作用，仅多取几条）
+        fetch_k = min(compute_fetch_k(top_k, self.max_per_doc, self.overfetch), total)
+
         # 1. 向量检索
         query_emb = self.embedder.embed_queries([query])
-        vector_results = self.vector_store.search(query_emb, top_k=top_k * 2)
-        
+        vector_results = self.vector_store.search(query_emb, top_k=fetch_k)
+
         if not vector_results:
             return []
-        
-        # 2. 关键词检索（BM25风格）
-        keyword_results = self._keyword_search(query, top_k=top_k * 2)
-        
+
+        # 2. 关键词检索（倒排索引：构建一次，查询只扫候选）
+        keyword_results = self._keyword_search(query, top_k=fetch_k)
+
         # 3. 融合结果（RRF）
         merged = self._merge_results(vector_results, keyword_results)
-        
+
         # 4. 同文档去重（召回多样性）：按 doc_id 限流，同一文档最多 max_per_doc 条
         merged = self._diversify(merged)
 
@@ -85,67 +130,34 @@ class HybridRetriever:
                     c["final_score"] = float(score)
                     results.append(c)
             return results
-        
+
         return merged[:top_k]
 
     def _diversify(self, ranked: List[Dict]) -> List[Dict]:
-        """按文档去重：同一 doc_id 最多保留 max_per_doc 个切片，其余让给其他文档。
+        """按文档去重（实现见 core/ranking.py，纯函数便于单测）"""
+        return diversify_by_doc(ranked, self.max_per_doc)
 
-        基于已按 rrf_score 降序的列表，顺序扫描并计数，超过上限的跳过。
-        保留同文档中相关度最高的切片，同时给其他文档留出位置。
-        """
-        if self.max_per_doc <= 0:
-            return ranked
-
-        result = []
-        doc_count: Dict[str, int] = {}
-        for item in ranked:
-            doc_id = (item.get("metadata") or {}).get("doc_id") or ""
-            if not doc_id:
-                # 无 doc_id 的切片不参与限流（理论上不存在，防御性保留）
-                result.append(item)
-                continue
-            n = doc_count.get(doc_id, 0)
-            if n >= self.max_per_doc:
-                continue
-            doc_count[doc_id] = n + 1
-            result.append(item)
-        return result
-    
     def _keyword_search(self, query: str, top_k: int) -> List[Tuple[str, float]]:
-        """关键词检索"""
+        """关键词检索（默认倒排索引；scan 模式保留旧的全扫行为作兜底）
+
+        返回 [(chunk_id, score)]，供 RRF 融合使用（只用名次）。
+        """
         if not self.texts:
             return []
-        
-        # 分词
-        query_words = set(self.embedder._tokenize(query))
-        if not query_words:
-            return []
-        
-        # 计算BM25分数
-        scores = []
-        for idx, text in enumerate(self.texts):
-            text_words = set(self.embedder._tokenize(text))
-            common = query_words & text_words
-            if common:
-                # 使用改进的Jaccard相似度
-                score = len(common) / (len(query_words) + len(text_words) - len(common))
-                # 加权：匹配词越多越好
-                score = score * (1 + 0.5 * len(common) / max(len(query_words), 1))
+
+        if self.keyword_search_mode == "scan":
+            pairs = search_scan(self.texts, self.embedder._tokenize, query, top_k)
+        else:
+            # 惰性构建：首次查询建一次（与旧实现"单次查询成本"相当），之后查询均为 O(候选)
+            if not self._kw_index.ensure_built(self.texts):
+                pairs = search_scan(self.texts, self.embedder._tokenize, query, top_k)
             else:
-                score = 0
-            scores.append((idx, score))
-        
-        # 排序
-        scores.sort(key=lambda x: x[1], reverse=True)
-        
-        # 返回结果
+                pairs = self._kw_index.search(query, top_k)
+
         results = []
-        for idx, score in scores[:top_k]:
-            if idx < len(self.vector_store.chunk_ids):
-                chunk_id = self.vector_store.chunk_ids[idx]
-                results.append((chunk_id, score))
-        
+        for idx, score in pairs:
+            if 0 <= idx < len(self.vector_store.chunk_ids):
+                results.append((self.vector_store.chunk_ids[idx], float(score)))
         return results
     
     def _merge_results(self, vector_results, keyword_results) -> List[Dict]:
@@ -175,9 +187,13 @@ class HybridRetriever:
         return results
     
     def get_stats(self) -> Dict:
-        """获取统计信息"""
+        """获取统计信息（含关键词索引状态，便于大库排查"检索慢/召回少"）"""
         return {
             "total_chunks": len(self.vector_store.chunk_ids),
             "text_cache_size": len(self.texts),
-            "use_rerank": self.use_rerank
+            "use_rerank": self.use_rerank,
+            "max_per_doc": self.max_per_doc,
+            "retrieve_overfetch": self.overfetch,
+            "keyword_search_mode": self.keyword_search_mode,
+            "keyword_index": self._kw_index.stats(),
         }

@@ -1,0 +1,17 @@
+{
+  "name": "video-frames",
+  "version": "1.0.0",
+  "description": "当用户需要从视频中提取帧或创建缩略图时使用，如\"提取视频的某一帧\"、\"获取视频截图\"、\"创建视频缩略图\"、\"截取视频片段\"、\"从视频中提取图片\"等。",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "video-frames",
+      "description": "当用户需要从视频中提取帧或创建缩略图时使用，如\"提取视频的某一帧\"、\"获取视频截图\"、\"创建视频缩略图\"、\"截取视频片段\"、\"从视频中提取图片\"等。",
+      "prompt": "执行技能: video-frames",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

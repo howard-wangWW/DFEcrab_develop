@@ -1,0 +1,17 @@
+{
+  "name": "file-manager",
+  "version": "1.0.0",
+  "description": "文件管理工具，支持创建、读取、删除、列表",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "file-manager",
+      "description": "文件管理工具，支持创建、读取、删除、列表",
+      "prompt": "执行技能: file-manager",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

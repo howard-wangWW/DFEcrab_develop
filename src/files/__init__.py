@@ -9,12 +9,12 @@
 """
 from .service import FileService
 from .registry import (
-    register, get, list_by_session, list_by_user,
+    register, get, list_by_session, list_by_user, list_unclaimed, attach_to_message,
     mark_deleted, delete_record, remove_by_session, cleanup_orphans,
 )
 
 __all__ = [
     "FileService",
-    "register", "get", "list_by_session", "list_by_user",
+    "register", "get", "list_by_session", "list_by_user", "list_unclaimed", "attach_to_message",
     "mark_deleted", "delete_record", "remove_by_session", "cleanup_orphans",
 ]

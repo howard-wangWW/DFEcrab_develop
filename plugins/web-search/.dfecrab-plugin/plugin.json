@@ -1,0 +1,17 @@
+{
+  "name": "web-search",
+  "version": "1.0.0",
+  "description": "使用 DuckDuckgo 搜索网络信息",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "web-search",
+      "description": "使用 DuckDuckgo 搜索网络信息",
+      "prompt": "执行技能: web-search",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

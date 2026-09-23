@@ -110,12 +110,15 @@ class LocalEmbedder:
         
         model_name = model_names.get(self.model_name, "bge-small-zh-v1.5")
         
-        # 检查多个可能的位置（按命中概率排序；末尾为"项目内 models/"，
+        # 检查多个可能的位置（现场部署路径在前，末尾为"项目内 models/"，
         # 用 __file__ 推导而非硬编码部署路径，任何机器上都成立）
         possible_paths = [
             self.model_dir / model_name,
             self.model_dir / "models" / model_name,
+            Path("/root/.cache/huggingface/hub") / f"models--BAAI--{model_name}",
             Path.home() / ".cache/huggingface/hub" / f"models--BAAI--{model_name}",
+            Path("/root/DFEcrab") / "models" / model_name,
+            Path("/home/e8900/DFEcrab") / "models" / model_name,
             Path(__file__).resolve().parents[3] / "models" / model_name,
         ]
         

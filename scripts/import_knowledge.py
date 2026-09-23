@@ -23,9 +23,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.knowledge.paths import require_runtime_deps
 require_runtime_deps()
 
-from src.knowledge.storage.document_repo import DocumentRepository
+from src.knowledge.storage.document_repo import DocumentRepository, store_document_images
 from src.knowledge.storage.document_loader import DocumentLoader
-from src.knowledge.core.document_processor import DocumentProcessor
+from src.knowledge.core.document_processor import DocumentProcessor, filter_indexable
 from src.knowledge.embedding.local_embedder import LocalEmbedder
 from src.knowledge.core.vector_store import VectorStore
 import logging
@@ -69,7 +69,9 @@ def process_document(doc_id: str, repo: DocumentRepository):
             "title": doc_info.title,
             "file_name": doc_info.file_name,
         }
-        chunks = processor.process_document(content, metadata)
+        # 图片落盘 + 占位块映射（与上传链路 / 重建脚本共用同一份逻辑）
+        image_map = store_document_images(repo, doc_id, loader.last_images)
+        chunks = processor.process_document(content, metadata, image_map)
         
         if not chunks:
             logger.warning(f"文档切片为空: {doc_path.name}")
@@ -119,7 +121,7 @@ def rebuild_vector_index():
             if chunks_path.exists():
                 try:
                     with open(chunks_path, 'r', encoding='utf-8') as f:
-                        chunks = json.load(f)
+                        chunks = filter_indexable(json.load(f))
                         for chunk in chunks:
                             chunk["metadata"]["title"] = doc_info.title
                             chunk["metadata"]["category"] = doc_info.category
@@ -136,7 +138,12 @@ def rebuild_vector_index():
     
     try:
         embedder = LocalEmbedder()
-        contents = [c["content"] for c in all_chunks]
+        # 嵌入统一取「检索位」metadata["content"]（图片片已被 filter_indexable 剔除，
+        # 它们不进索引，靠检索后邻近带出）
+        contents = [
+            (c.get("metadata") or {}).get("content") or c["content"]
+            for c in all_chunks
+        ]
         
         # 分批处理
         batch_size = 100

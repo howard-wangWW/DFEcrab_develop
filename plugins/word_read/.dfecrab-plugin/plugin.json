@@ -1,0 +1,17 @@
+{
+  "name": "word_read",
+  "version": "1.0.0",
+  "description": "",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "word_read",
+      "description": "",
+      "prompt": "执行技能: word_read",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

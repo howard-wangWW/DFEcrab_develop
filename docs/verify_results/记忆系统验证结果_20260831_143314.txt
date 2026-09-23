@@ -1,0 +1,21 @@
+[INFO ] 目标 BASE=http://127.0.0.1:6789 USER=admin ROUNDS=11
+[PASS ] index_health BM25 检索引擎已启用
+[PASS ] search 命中 0 条
+[PASS ] stats {"daily_files_count": 11, "latest_daily_file": "data/memory/users/admin/global/D
+[PASS ] recent {"current_model": "qwen3_32b_q4: Qwen3-32B-Q4-K-M", "recent_memory": [{"date": "
+[PASS ] files {"total_files": 11, "files": ["data/memory/users/admin/global/DAILY/2026-08-31.m
+[PASS ] storage {"daily_path": "data/memory/users/admin/global/DAILY"}
+[PASS ] agents total_agents=6
+[PASS ] agents/kunming 
+[PASS ] users GET 
+[PASS ] users POST id=mem_1788157994767_d50678
+[PASS ] users PUT 
+[PASS ] users 更新校验 content=更新值
+[PASS ] users DELETE 
+[PASS ] chat len=39 summary=我家在昆明，工作主要是电力调度运维，回复请简洁一点。
+[PASS ] sessions GET 
+[WARN ] 自动提取 未发现 conversation 记忆（旧代码未部署阶段 B，或 LLM 未提取到高置信度事实）
+[INFO ] 对话摘要 第1轮: 
+[INFO ] 对话摘要 第11轮: 
+[WARN ] 滚动摘要 未获取到滚动摘要（可能轮次不足或旧代码）
+[INFO ] 清理 memory:mem_1788157994767_d50678; chat_session

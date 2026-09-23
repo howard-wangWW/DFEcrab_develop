@@ -1,0 +1,17 @@
+{
+  "name": "mcp-config",
+  "version": "1.0.0",
+  "description": "MCP (Model Context Protocol) 服务器配置管理工具，用于连接 MCP 服务并调用其工具",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "mcp-config",
+      "description": "MCP (Model Context Protocol) 服务器配置管理工具，用于连接 MCP 服务并调用其工具",
+      "prompt": "执行技能: mcp-config",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

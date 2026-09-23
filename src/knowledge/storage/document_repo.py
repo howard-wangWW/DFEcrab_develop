@@ -12,7 +12,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, asdict, field
 import logging
 
-from ..paths import KNOWLEDGE_BASE, SUPPORTED_EXTENSIONS
+from ..paths import KNOWLEDGE_BASE, MEDIA_DIR, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,64 @@ class DocumentInfo:
     chunk_count: int = 0
 
 
+def store_document_images(repo: "DocumentRepository", doc_id: str,
+                          images: List[dict]) -> Dict[str, Dict]:
+    """把 DocumentLoader.last_images 里的原图写到 media/{doc_id}/，
+    返回 {文件名: {"ocr_text", "url"}}，供切片器给图片片挂 images（展示）与
+    content（检索位）。
+
+    三条入库通路共用：knowledge_service.upload_document、
+    scripts/import_knowledge.py、scripts/rebuild_knowledge_chunks.py。
+    漏掉任何一条，那条通路的切片就会只有占位块、没有图内文字进检索。
+
+    降级原则：**落盘失败绝不能让上传/重建整体失败**。单张失败就跳过该张
+    （正文里仍留着占位块，前端取图会 404，日志有明确记录）；目录都建不出来
+    就整体放弃，此时切片退化为纯文本（与改造前行为一致）。
+    """
+    if not images:
+        return {}
+
+    try:
+        media_dir = repo.get_media_dir(doc_id, create=True)
+    except Exception as e:
+        logger.warning(f"⚠️ 图片目录创建失败，本次不落盘图片（切片退化为纯文本）: {e}")
+        return {}
+
+    result: Dict[str, Dict] = {}
+    total_bytes = 0
+    for item in images:
+        name = (item.get("name") or "").strip()
+        blob = item.get("blob") or b""
+        if not name or not blob:
+            continue
+        try:
+            (media_dir / name).write_bytes(blob)
+        except Exception as e:
+            logger.warning(f"⚠️ 图片落盘失败，前端将取不到该图: {name} ({e})")
+            continue
+        total_bytes += len(blob)
+        result[name] = {
+            "ocr_text": item.get("ocr_text") or "",
+            "url": f"/knowledge/media/{doc_id}/{name}",
+        }
+
+    # doc_id 是内容寻址：同内容重传会解析出同一批图。但改了 max_images / dpi
+    # 之后可能少几张，残留旧文件会让前端拿到已无切片引用的图 —— 清掉。
+    try:
+        for old in media_dir.iterdir():
+            if old.is_file() and old.name not in result:
+                old.unlink()
+    except Exception as e:
+        logger.warning(f"⚠️ 清理过期图片失败（忽略）: {e}")
+
+    if result:
+        logger.info(
+            f"🖼️  图片入库 {len(result)}/{len(images)} 张"
+            f"（约 {total_bytes / 1024 / 1024:.1f} MB）→ {media_dir}"
+        )
+    return result
+
+
 class DocumentRepository:
     """文档仓库管理"""
     
@@ -48,6 +106,7 @@ class DocumentRepository:
         self.index_dir = self.base_dir / "index"
         self.cache_dir = self.base_dir / "cache"
         self.config_dir = self.base_dir / "config"
+        self.media_dir = self.base_dir / "media"
         
         self._create_directories()
         self.mapping_file = self.config_dir / "document_mapping.json"
@@ -55,8 +114,9 @@ class DocumentRepository:
 
     def _create_directories(self):
         """创建目录"""
-        for dir_path in [self.documents_dir, self.processed_dir, 
-                         self.index_dir, self.cache_dir, self.config_dir]:
+        for dir_path in [self.documents_dir, self.processed_dir,
+                         self.index_dir, self.cache_dir, self.config_dir,
+                         self.media_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
         
         for cat in self.DEFAULT_CATEGORIES:
@@ -200,7 +260,18 @@ class DocumentRepository:
         path = self.processed_dir / "chunks" / f"{doc_id}_chunks.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
-    
+
+    def get_media_dir(self, doc_id: str, create: bool = False) -> Path:
+        """文档内嵌图片目录（knowledge_base/media/{doc_id}/）
+
+        create=False 时只算路径不建目录 —— 取图路由要靠「路径存在与否」判断 404，
+        不能因为取一次图就把空目录建出来。
+        """
+        path = self.media_dir / doc_id
+        if create:
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def delete_document(self, doc_id: str) -> bool:
         if doc_id not in self.documents:
             return False
@@ -210,11 +281,16 @@ class DocumentRepository:
         if file_path.exists():
             file_path.unlink()
         
-        for path in [self.get_processed_text_path(doc_id), 
+        for path in [self.get_processed_text_path(doc_id),
                      self.get_chunks_path(doc_id)]:
             if path.exists():
                 path.unlink()
-        
+
+        # 切片正文里的图片占位块会失效，原图一并清掉，避免 media 目录只增不减
+        media_dir = self.get_media_dir(doc_id)
+        if media_dir.exists():
+            shutil.rmtree(media_dir, ignore_errors=True)
+
         del self.documents[doc_id]
         self._save_mapping()
         logger.info(f"文档已删除: {doc_info.title}")

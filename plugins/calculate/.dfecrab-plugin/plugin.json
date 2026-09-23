@@ -1,0 +1,17 @@
+{
+  "name": "calculate",
+  "version": "1.0.0",
+  "description": "计算数学表达式，支持基础运算、复杂数学函数",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "calculate",
+      "description": "计算数学表达式，支持基础运算、复杂数学函数",
+      "prompt": "执行技能: calculate",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

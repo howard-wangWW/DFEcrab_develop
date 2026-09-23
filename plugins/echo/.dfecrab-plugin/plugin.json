@@ -1,0 +1,17 @@
+{
+  "name": "echo",
+  "version": "1.0.0",
+  "description": "回显用户的消息",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "echo",
+      "description": "回显用户的消息",
+      "prompt": "执行技能: echo",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

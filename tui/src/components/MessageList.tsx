@@ -11,25 +11,6 @@ export interface MessageListProps {
   messages: Message[];
 }
 
-/**
- * Markdown 图片语法匹配：![alt](url)
- *
- * Ink 是终端 UI，只能渲染文本、无法显示位图，因此把图片语法降级成可读的链接行，
- * 用户可在浏览器中打开查看；批量浏览请用后端的 /api/images/gallery 画廊页。
- */
-const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
-
-/** 后端 HTTP 地址，用于把 "/api/images/xxx" 补全成绝对 URL */
-const IMAGE_BASE_URL = process.env.DFECRAB_HTTP_URL || 'http://localhost:6789';
-
-const toTerminalContent = (content: string): string =>
-  String(content || '').replace(IMAGE_MD_RE, (_m, alt, url) => {
-    const abs = /^https?:\/\//i.test(url)
-      ? url
-      : `${IMAGE_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-    return `\n🖼 图片${alt ? `（${alt}）` : ''}: ${abs}\n`;
-  });
-
 export const MessageList: React.FC<MessageListProps> = ({ messages = [] }) => {
   if (!messages || messages.length === 0) {
     return (
@@ -70,7 +51,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ type, content }) => {
         <Box flexDirection="column" marginBottom={1}>
           <Box>
             <Text bold color="cyan">🤖 AI: </Text>
-            <Text wrap="wrap">{toTerminalContent(content)}</Text>
+            <Text wrap="wrap">{content}</Text>
           </Box>
         </Box>
       );

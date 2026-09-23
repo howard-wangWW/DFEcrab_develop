@@ -51,10 +51,40 @@ class SkillLoader:
     def __init__(
         self,
         max_injected_skills: int = 3,
-        max_excerpt_chars: int = 1600,
+        max_excerpt_chars: int = 12000,
+        max_excerpt_lines: int = 400,
+        max_always_apply_skills: int = 20,
+        catalog_enabled: bool = True,
+        catalog_scope: str = "synced",
+        catalog_max_skills: int = 100,
+        catalog_max_desc_chars: int = 200,
+        synced_skills: Optional[List[str]] = None,
+        catalog_header: str = "",
+        catalog_item_format: str = "",
     ):
-        self.max_injected_skills = max_injected_skills
-        self.max_excerpt_chars = max_excerpt_chars
+        # ★ 技能对齐：运行期配置读 config/dfecrab.json 的 skills 段（缺失/读失败则用入参默认值）。
+        #    改该段后需重启网关——SkillLoader 是模块级单例，构造时读一次。
+        _scfg: Dict[str, Any] = {}
+        try:
+            from src.config.app_config import section as _section
+            _scfg = _section("skills") or {}
+        except Exception:
+            _scfg = {}
+
+        def _pick(_key: str, _cur: Any) -> Any:
+            return _scfg[_key] if _key in _scfg and _scfg[_key] is not None else _cur
+
+        self.max_injected_skills = int(_pick("max_injected_skills", max_injected_skills))
+        self.max_excerpt_chars = int(_pick("max_excerpt_chars", max_excerpt_chars))
+        self.max_excerpt_lines = int(_pick("max_excerpt_lines", max_excerpt_lines))
+        self.max_always_apply_skills = int(_pick("max_always_apply_skills", max_always_apply_skills))
+        self.catalog_enabled = bool(_pick("catalog_enabled", catalog_enabled))
+        self.catalog_scope = str(_pick("catalog_scope", catalog_scope))
+        self.catalog_max_skills = int(_pick("catalog_max_skills", catalog_max_skills))
+        self.catalog_max_desc_chars = int(_pick("catalog_max_desc_chars", catalog_max_desc_chars))
+        self.synced_skills = list(_pick("synced_skills", synced_skills) or [])
+        self.catalog_header = str(_pick("catalog_header", catalog_header))
+        self.catalog_item_format = str(_pick("catalog_item_format", catalog_item_format))
 
     @staticmethod
     def _get_project_root() -> Path:
@@ -145,10 +175,10 @@ class SkillLoader:
         return {}
 
     @staticmethod
-    def _extract_excerpt(skill_body: str, max_chars: int) -> str:
+    def _extract_excerpt(skill_body: str, max_chars: int, max_lines: int = 400) -> str:
         lines = [line.rstrip() for line in skill_body.splitlines()]
         meaningful = [line for line in lines if line.strip()]
-        excerpt = "\n".join(meaningful[:40]).strip()
+        excerpt = "\n".join(meaningful[:max_lines]).strip()
         if len(excerpt) > max_chars:
             excerpt = excerpt[:max_chars].rstrip() + "\n...(已截断)"
         return excerpt
@@ -298,7 +328,25 @@ class SkillLoader:
         elif not isinstance(triggers, list):
             triggers = []
 
-        excerpt = self._extract_excerpt(body, self.max_excerpt_chars)
+        # ★ 技能对齐：解析 LibreChat 语义的 frontmatter 字段
+        #   always-apply             → 常驻注入（不受关键词门槛 / 技能白名单 / max_injected_skills 限制）
+        #   disable-model-invocation → 不进技能清单，且 skill 工具拒绝加载
+        _always_raw = frontmatter.get("always-apply", frontmatter.get("always_apply"))
+        always_apply = (
+            str(_always_raw).strip().lower() in ("true", "yes", "1")
+            if _always_raw is not None
+            else False
+        )
+        _dmi_raw = frontmatter.get(
+            "disable-model-invocation", frontmatter.get("disableModelInvocation")
+        )
+        disable_model_invocation = (
+            str(_dmi_raw).strip().lower() in ("true", "yes", "1")
+            if _dmi_raw is not None
+            else False
+        )
+
+        excerpt = self._extract_excerpt(body, self.max_excerpt_chars, self.max_excerpt_lines)
         keywords = self._extract_keywords(skill_id, name, description, excerpt, execute_meta)
 
         return {
@@ -308,6 +356,8 @@ class SkillLoader:
             "triggers": triggers,
             "keywords": keywords,
             "excerpt": excerpt,
+            "always_apply": always_apply,
+            "disable_model_invocation": disable_model_invocation,
             "has_skill_md": bool(skill_md),
         }
 
@@ -322,9 +372,18 @@ class SkillLoader:
             ]
 
         manifests = []
+        _loaded = set()
         for skill_id in skill_ids:
             manifest = self._load_skill_manifest(skill_id)
             if manifest:
+                manifests.append(manifest)
+                _loaded.add(skill_id)
+        # ★ 常驻技能（frontmatter `always-apply: true`）：不受 agent 技能白名单限制，始终进入注入池
+        for entry in skills_dir.iterdir():
+            if not entry.is_dir() or entry.name.startswith(".") or entry.name in _loaded:
+                continue
+            manifest = self._load_skill_manifest(entry.name)
+            if manifest and manifest.get("always_apply"):
                 manifests.append(manifest)
         return manifests
 
@@ -401,6 +460,14 @@ class SkillLoader:
         matched: List[Dict[str, Any]] = []
 
         for manifest in manifests:
+            # ★ 常驻技能：不受关键词分数门槛限制，始终注入（对齐 LibreChat always-apply）
+            if manifest.get("always_apply"):
+                pinned = dict(manifest)
+                pinned["score"] = 9999
+                pinned["match_reasons"] = ["always-apply"]
+                matched.append(pinned)
+                continue
+
             scoring = self._score_manifest(user_text, manifest)
             score = scoring["score"]
             if score < 12:
@@ -411,8 +478,82 @@ class SkillLoader:
             result["match_reasons"] = scoring["reasons"]
             matched.append(result)
 
-        matched.sort(key=lambda item: item["score"], reverse=True)
-        return matched[: self.max_injected_skills]
+        # ★ 常驻技能与"关键词命中"分开计额（对齐 LibreChat：always-apply 不占 manual 名额）
+        pinned_matched = [item for item in matched if item.get("always_apply")]
+        keyword_matched = [item for item in matched if not item.get("always_apply")]
+        pinned_matched.sort(key=lambda item: item["skill_id"])
+        keyword_matched.sort(key=lambda item: item["score"], reverse=True)
+        if self.max_always_apply_skills > 0:
+            pinned_matched = pinned_matched[: self.max_always_apply_skills]
+        return pinned_matched + keyword_matched[: self.max_injected_skills]
+
+    def _catalog_skill_ids(self) -> List[str]:
+        """技能清单（catalog）覆盖的目录名集合。
+
+        scope=all    ：skills/ 下所有目录（等价 LibreChat「全部可访问技能」）
+        scope=synced ：显式 synced_skills ∪ 只读引用（软链）——即与 LibreChat 对齐的那批
+        """
+        skills_dir = self._get_skills_dir()
+        if not skills_dir.exists():
+            return []
+
+        if self.catalog_scope == "all":
+            return sorted(
+                entry.name for entry in skills_dir.iterdir()
+                if entry.is_dir() and not entry.name.startswith(".")
+            )
+
+        ids: List[str] = []
+        for name in self.synced_skills:
+            if isinstance(name, str) and name and name not in ids:
+                ids.append(name)
+        for entry in sorted(skills_dir.iterdir(), key=lambda _p: _p.name):
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+            if entry.is_symlink() and entry.name not in ids:
+                ids.append(entry.name)
+        return ids
+
+    def build_skill_catalog(self) -> Dict[str, Any]:
+        """构造"已挂载技能"清单文本（对齐 LibreChat 的 catalog 通道）。
+
+        只给 name + description，不给正文；正文由 `skill` 工具按需加载。
+        """
+        if not self.catalog_enabled:
+            return {"entries": [], "prompt": ""}
+
+        entries: List[Dict[str, str]] = []
+        for skill_id in self._catalog_skill_ids():
+            manifest = self._load_skill_manifest(skill_id)
+            if not manifest or not manifest.get("has_skill_md"):
+                continue
+            if manifest.get("disable_model_invocation"):
+                continue
+            desc = " ".join((manifest.get("description") or "").split())
+            limit = self.catalog_max_desc_chars
+            if limit > 0 and len(desc) > limit:
+                desc = desc[:limit].rstrip() + "…"
+            entries.append({
+                "name": str(manifest.get("name") or skill_id),
+                "description": desc,
+            })
+            if self.catalog_max_skills > 0 and len(entries) >= self.catalog_max_skills:
+                break
+
+        if not entries:
+            return {"entries": [], "prompt": ""}
+
+        header = self.catalog_header or "## 已挂载技能清单"
+        line_fmt = self.catalog_item_format or "- {name}: {description}"
+        lines = [
+            header,
+            f"共 {len(entries)} 个技能。需要某个技能的完整说明时，调用 `skill` 工具并传入 skillName。",
+        ]
+        for item in entries:
+            lines.append(
+                line_fmt.replace("{name}", item["name"]).replace("{description}", item["description"])
+            )
+        return {"entries": entries, "prompt": "\n".join(lines).strip()}
 
     def build_injected_prompt(
         self,
@@ -420,26 +561,26 @@ class SkillLoader:
         enabled_skills: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         matched = self.match_skills(user_text=user_text, enabled_skills=enabled_skills)
-        if not matched:
-            return {
-                "matched_skills": [],
-                "prompt": "",
-            }
+        catalog = self.build_skill_catalog()
 
-        parts = [
-            "以下是根据当前用户请求自动匹配到的技能说明。",
-            "这些说明用于指导你如何处理当前任务；若技能对应工具可用，请优先调用工具而不是凭空臆测结果。",
-            "若技能说明与更高优先级的系统、安全或用户要求冲突，以更高优先级要求为准。",
-        ]
+        parts: List[str] = []
+        if catalog.get("prompt"):
+            parts.append(catalog["prompt"])
 
-        for skill in matched:
-            section = [f"### Skill: {skill['skill_id']}"]
-            if skill.get("description"):
-                section.append(f"Description: {skill['description']}")
-            if skill.get("excerpt"):
-                section.append("Instructions:")
-                section.append(skill["excerpt"])
-            parts.append("\n".join(section))
+        if matched:
+            parts.extend([
+                "以下是根据当前用户请求自动匹配到的技能说明。",
+                "这些说明用于指导你如何处理当前任务；若技能对应工具可用，请优先调用工具而不是凭空臆测结果。",
+                "若技能说明与更高优先级的系统、安全或用户要求冲突，以更高优先级要求为准。",
+            ])
+            for skill in matched:
+                section = [f"### Skill: {skill['skill_id']}"]
+                if skill.get("description"):
+                    section.append(f"Description: {skill['description']}")
+                if skill.get("excerpt"):
+                    section.append("Instructions:")
+                    section.append(skill["excerpt"])
+                parts.append("\n".join(section))
 
         return {
             "matched_skills": [
@@ -451,6 +592,7 @@ class SkillLoader:
                 }
                 for item in matched
             ],
+            "skill_catalog": catalog.get("entries", []),
             "prompt": "\n\n".join(parts).strip(),
         }
 

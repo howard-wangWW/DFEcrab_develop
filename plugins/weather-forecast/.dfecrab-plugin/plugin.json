@@ -1,0 +1,17 @@
+{
+  "name": "weather-forecast",
+  "version": "1.0.0",
+  "description": "This skill should be used when users ask about weather forecasts, temperature information, or need to retrieve weather data for specific locations. It provides access to the Open-Meteo weather API for getting hourly temperature forecasts based on latitude and longitude coordinates.",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "weather-forecast",
+      "description": "This skill should be used when users ask about weather forecasts, temperature information, or need to retrieve weather data for specific locations. It provides access to the Open-Meteo weather API for getting hourly temperature forecasts based on latitude and longitude coordinates.",
+      "prompt": "执行技能: weather-forecast",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

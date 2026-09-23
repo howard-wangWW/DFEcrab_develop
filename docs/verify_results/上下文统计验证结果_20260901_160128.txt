@@ -1,0 +1,45 @@
+[INFO ] 目标 BASE=http://127.0.0.1:6789 USER=admin
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[PASS ] chat直答 used_percent=33.4% (5476/16384 tokens, source=llm_usage, categories=['system_prompt', 'tools', 'memory', 'skills', 'history', 'current', 'tool_results'])
+[PASS ] task/ReAct used_percent=5.2% (857/16384 tokens, source=local_estimate, categories=['system_prompt', 'tools', 'memory', 'skills', 'history', 'current', 'tool_results'])
+[PASS ] chat/stream used_percent=33.4% (5476/16384 tokens, source=llm_usage, categories=['system_prompt', 'tools', 'memory', 'skills', 'history', 'current', 'tool_results'])
+[INFO ] 自动压缩 第1轮 used_percent=34.4% compacted=False
+[INFO ] 自动压缩 第2轮 used_percent=34.6% compacted=False
+[INFO ] 自动压缩 第3轮 used_percent=34.4% compacted=False
+[INFO ] 自动压缩 第4轮 used_percent=34.6% compacted=False
+[INFO ] 自动压缩 第5轮 used_percent=34.2% compacted=False
+[INFO ] 自动压缩 第6轮 used_percent=34.2% compacted=False
+[WARN ] 自动压缩 6 轮未达 85% 阈值，used_percent 峰值=34.2%（未触发属正常，说明上下文未耗尽）
+[PASS ] 模型标注 agent=dfecrab → model=Qwen3-32B-Q4-K-M
+[PASS ] 知识库usage source=local_estimate, prompt=1321
+[PASS ] 会话usage接口 turns=1 total_tokens=5625 last_used=33.4%
+[PASS ] 按模型聚合 models=['Qwen3-32B-Q4-K-M'] total_tokens=5625
+[PASS ] 模型CRUD 新增 verify_tmp_model_161142
+[PASS ] 模型CRUD 新增后列表可见
+[PASS ] 模型CRUD 编辑成功
+[PASS ] 模型CRUD 已删除 verify_tmp_model_161142
+[PASS ] 用户CRUD 新增 verify_tmp_user_161142
+[PASS ] 用户CRUD 新增后列表可见
+[PASS ] 用户CRUD 改角色成功
+[PASS ] 用户CRUD 已删除 verify_tmp_user_161142
+[WARN ] WS心跳 websockets 库未安装，跳过
+[PASS ] 用量统计 period=day user=* total_tokens=178873 by_day_len=1
+[WARN ] 窗口发现 qwen3_32b_q4 探测未返回（/models 可能无 max_model_len）: {"success": false, "error": "探测失败: qwen3_32b_q4（检查 api_base 是否为 vLLM/OpenAI 兼容 /models）"}
+[PASS ] 历史tokens ctx_usage_direct_160128 assistant tokens 已落库: {'prompt': 5476, 'completion': 149, 'total': 5625}
+[PASS ] 历史上下文 ctx_usage_direct_160128 assistant 带 context_usage: used_percent=33.4%
+[PASS ] 历史tokens ctx_usage_react_160210 assistant tokens 已落库: {'prompt': 857, 'completion': 0, 'total': 857}
+[PASS ] 历史上下文 ctx_usage_react_160210 assistant 带 context_usage: used_percent=5.2%
+[PASS ] 历史tokens ctx_usage_stream_160310 assistant tokens 已落库: {'prompt': 5476, 'completion': 152, 'total': 5628}
+[PASS ] 历史上下文 ctx_usage_stream_160310 assistant 带 context_usage: used_percent=33.4%
+[PASS ] 历史tokens ctx_usage_compact_160402 assistant tokens 已落库: {'prompt': 5596, 'completion': 0, 'total': 5596}
+[PASS ] 历史上下文 ctx_usage_compact_160402 assistant 带 context_usage: used_percent=34.2%
+[PASS ] 历史tokens ctx_usage_model_160945 assistant tokens 已落库: {'prompt': 5587, 'completion': 0, 'total': 5587}
+[PASS ] 历史上下文 ctx_usage_model_160945 assistant 带 context_usage: used_percent=34.1%
+[PASS ] 历史tokens ctx_usage_kb_161045 assistant tokens 已落库: {'prompt': 1321, 'completion': 0, 'total': 1321}
+[PASS ] 历史上下文 ctx_usage_kb_161045 assistant 带 context_usage: used_percent=8.1%
+[PASS ] 清理会话 ctx_usage_direct_160128
+[PASS ] 清理会话 ctx_usage_react_160210
+[PASS ] 清理会话 ctx_usage_stream_160310
+[PASS ] 清理会话 ctx_usage_compact_160402
+[PASS ] 清理会话 ctx_usage_model_160945
+[PASS ] 清理会话 ctx_usage_kb_161045

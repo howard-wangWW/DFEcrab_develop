@@ -2,5 +2,7 @@
   "enabled_skills": [
     "knowledge_qa",
     "knowledge_search"
-  ]
+  ],
+  "builtin_tools": [],
+  "custom_tools": []
 }

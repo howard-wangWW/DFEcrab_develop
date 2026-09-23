@@ -1,0 +1,14 @@
+对话链路 Bug 修复（批次一~三）验证结果
+时间: 2026-09-01 18:27:53
+网关: http://172.20.51.153:6789
+============================================================
+[INFO ] 开始 网关=http://172.20.51.153:6789
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[PASS ] 非流式对话 response_len=17, message_end=True
+[PASS ] 流式-message事件 message=19, start=1, end=1, 顺序正确=True
+[PASS ] 工具筛选 tool_call=['weather']（期望 weather，非 31 工具全量）
+[PASS ] MCP工具 tool_call=['get_feeder_topology']（MCP 工具应被保留并可调用）
+[PASS ] 知识库直答 response_len=151
+[WARN ] Manager决策 intent=chat, target=dfecrab, reasoning=Manager JSON 解析失败，降级 IntentClassifier=chat
+[INFO ] 清理 已清理 6 个测试会话
+============================================================

@@ -1,0 +1,76 @@
+{
+  "name": "dfecrab-dev",
+  "version": "1.0.0",
+  "description": "DFEcrab 开发辅助插件",
+  "author": "DFEcrab Team",
+
+  "commands": [
+    {
+      "name": "review",
+      "description": "代码审查 - 检查代码质量和规范",
+      "template": "commands/review.md",
+      "aliases": ["cr"],
+      "arguments": [
+        {
+          "name": "files",
+          "description": "要审查的文件路径",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "description": "运行测试并生成报告",
+      "template": "commands/test.md",
+      "aliases": ["t"]
+    },
+    {
+      "name": "doc",
+      "description": "生成或更新文档",
+      "template": "commands/doc.md"
+    }
+  ],
+
+  "agents": [
+    {
+      "name": "code-reviewer",
+      "description": "代码审查专家",
+      "capabilities": ["code_review", "security_analysis", "performance_check"],
+      "tools": ["FileRead", "Grep", "Glob"],
+      "max_turns": 5
+    },
+    {
+      "name": "test-generator",
+      "description": "测试生成专家",
+      "capabilities": ["test_generation", "coverage_analysis"],
+      "tools": ["FileRead", "FileWrite", "Bash"],
+      "max_turns": 10
+    }
+  ],
+
+  "skills": [
+    {
+      "name": "python-development",
+      "description": "Python 开发最佳实践",
+      "prompt": "遵循 PEP 8 规范，使用类型注解，编写文档字符串",
+      "file_patterns": ["**/*.py"]
+    }
+  ],
+
+  "hooks": [
+    {
+      "type": "pre_commit",
+      "handler": "hooks/pre_commit.py:check_tests",
+      "priority": 10
+    },
+    {
+      "type": "session_start",
+      "handler": "hooks/session_start.py:load_context",
+      "priority": 5
+    }
+  ],
+
+  "applies_to": ["**/*.py", "**/*.md"],
+
+  "dfecrab_version": ">=3.0.0"
+}

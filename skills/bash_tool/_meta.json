@@ -1,0 +1,9 @@
+{
+  "skill_id": "bash_tool",
+  "version": "1.0.0",
+  "name": "会话工作区命令执行",
+  "description": "在会话隔离工作区内执行 shell / Python，产物自动登记为可下载文件（B 类：代码执行链路）",
+  "entry": "execute:execute",
+  "tool": true,
+  "enabled": true
+}

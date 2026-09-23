@@ -14,7 +14,7 @@ gateway:
 
 # Zookeeper配置
 zookeeper:
-  hosts: 172.20.42.72:2181
+  hosts: 192.168.103.88:2181
   namespace: dfecrab
 
 # 本地服务端口统一管理（单一事实源）
@@ -37,3 +37,32 @@ knowledge:
   table_rows_per_chunk: 20   # Excel/表格类文档每片数据行数（表头继承）
   qa_pair_keep: true         # 问答体文档：问答对尽量不被拆散
   filter_overfetch: 6        # 按分类检索时的超采倍数（FAISS 无原生元数据过滤，先超采再过滤）
+  # 图片片不入检索位，靠「同文档内 ±N 片范围的正文命中后附带」带出；0 = 只带命中片自身的图
+  image_neighbor_radius: 1
+  # 召回后处理（大库调优）
+  max_per_doc: 2             # 同一文档最多保留的切片数（召回多样性）
+  retrieve_overfetch: 4      # 候选放大倍数（先放大再限流，防止限流后结果不足）
+  # 关键词检索（倒排索引，十万级切片提速；scan=逐片全扫兜底）
+  keyword_search_mode: index
+  keyword_max_df_ratio: 0.5  # 高频词剪枝阈值（df/N 超过则整词剪掉）
+  # 入库 / 向量索引
+  embed_batch_size: 100      # 向量化批大小
+  index_type: auto           # flat / ivf / auto（auto 依 ivf_threshold 决定）
+  ivf_threshold: 500000      # auto 模式下切换 IVF 的切片数阈值
+  ivf_nlist: 0               # IVF 聚类数（0=自动 sqrt(N)）
+  ivf_nprobe: 16             # IVF 查询探测簇数（越大越准越慢）
+  # ★ 问答生成参数（场景级：仅作用于知识库 /knowledge/chat，不影响网关对话链路的模型级配置）
+  qa_enable_thinking: false  # 知识库问答关闭思考：false=关 / true=开 / 删除该行=不下发（其他现场零影响）
+  qa_temperature: 0.2        # QA 生成温度（网关对话温度在 dfecrab.json 的 provider.temperature，两场景独立）
+  qa_top_k: 5                # 默认召回切片数（请求参数 top_k 可临时覆盖）
+  qa_max_per_doc: 2          # 同一文档最多保留的切片数（召回多样性）
+  qa_max_context_chunks: 5   # 送入 LLM 上下文的切片数上限（应 >= qa_top_k）
+  # ★ OCR（默认关：现场反馈用 OCR 文本做图片索引效果不好）
+  #   开回方式：环境变量 KNOWLEDGE_OCR_ENABLED=true 或此处 enabled: true
+  ocr:
+    enabled: false
+    max_images: 50           # 单文档最多 OCR 图片数
+    max_pages: 50            # 扫描版 PDF 最多 OCR 页数
+    min_image_px: 64         # 小于该边长的图片跳过
+    pdf_text_threshold: 20   # 页面文本少于该字数视为扫描页
+    dpi: 200                 # 扫描页渲染精度

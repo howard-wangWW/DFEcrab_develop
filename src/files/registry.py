@@ -7,7 +7,7 @@ registry.py - 会话附件注册表（批次12：文件实体化生命周期）
 
 数据模型（data/files/registry.json）：
   {"files": {file_id: {
-      file_id, session_id, user_id, filename, size, storage,
+      file_id, session_id, user_id, message_id, filename, size, type, storage,
       summary_cache, created_at, status("active"/"deleted")
   }}}
 
@@ -106,8 +106,10 @@ def register(meta: Dict[str, Any]) -> Dict[str, Any]:
             "file_id": fid,
             "session_id": meta.get("session_id", ""),
             "user_id": meta.get("user_id", "default"),
+            "message_id": meta.get("message_id") or None,
             "filename": meta.get("filename", ""),
             "size": int(meta.get("size") or 0),
+            "type": meta.get("type", ""),
             "storage": meta.get("storage", ""),
             "summary_cache": meta.get("summary_cache", ""),
             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -139,12 +141,57 @@ def list_by_session(session_id: str, user_id: str = "", include_deleted: bool = 
         if not include_deleted and rec.get("status") != "active":
             continue
         out.append(rec)
+    out.sort(key=lambda r: str(r.get("created_at") or ""))
     return out
 
 
 def list_by_user(user_id: str) -> List[Dict[str, Any]]:
     return [r for r in _load().get("files", {}).values()
             if r.get("user_id") == user_id and r.get("status") == "active"]
+
+
+def list_unclaimed(session_id: str, user_id: str = "") -> List[Dict[str, Any]]:
+    """列某会话尚未绑定到消息的 active 附件。"""
+    out = []
+    for rec in list_by_session(session_id, user_id=user_id):
+        if rec.get("message_id"):
+            continue
+        out.append(rec)
+    return out
+
+
+def list_by_message(message_id: str, session_id: str = "") -> List[Dict[str, Any]]:
+    """列绑定到某条消息的 active 附件（用于"本轮附件"注入范围判定）。
+
+    归属完全由 message_id 数据决定，不做任何推测/兜底：
+      message_id 为空 → 返回空（不存在"本轮"概念）
+    """
+    out = []
+    if not message_id:
+        return out
+    for rec in _load().get("files", {}).values():
+        if rec.get("message_id") != message_id:
+            continue
+        if session_id and rec.get("session_id") != session_id:
+            continue
+        if rec.get("status") != "active":
+            continue
+        out.append(rec)
+    out.sort(key=lambda r: str(r.get("created_at") or ""))
+    return out
+
+
+def attach_to_message(file_id: str, message_id: str) -> Optional[Dict[str, Any]]:
+    """把附件绑定到某条消息；已绑定则保持原样。"""
+    with _lock:
+        data = _load()
+        rec = data.get("files", {}).get(file_id)
+        if rec is None:
+            return None
+        if not rec.get("message_id"):
+            rec["message_id"] = message_id
+            _save()
+        return rec
 
 
 def mark_deleted(file_id: str) -> Optional[Dict[str, Any]]:

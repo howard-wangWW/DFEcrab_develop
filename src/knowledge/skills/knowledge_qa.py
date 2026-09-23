@@ -58,9 +58,11 @@ class KnowledgeQASkill:
             from ..core.retriever import HybridRetriever
             from ..rag.query_engine import RAGQueryEngine
 
-            # 配置
+            # 配置（gateway.yaml → knowledge 段的 qa_* 场景参数，由 KnowledgeService 注入）
             top_k = self.config.get("top_k", 5)
             max_per_doc = self.config.get("max_per_doc", 2)
+            # 送入 LLM 的切片数上限，缺省与 top_k 对齐（避免 sources 与 LLM 实际依据不一致）
+            max_context_chunks = self.config.get("max_context_chunks", top_k)
 
             # 使用本地嵌入 + 统一位置向量索引（锚定项目根 knowledge_base/index）
             embedder = get_local_embedder()
@@ -80,6 +82,7 @@ class KnowledgeQASkill:
                 retriever=retriever,
                 llm_client=llm_client,
                 top_k=top_k,
+                max_context_chunks=max_context_chunks,
             )
             mode = "LLM问答模式" if llm_client else "本地TF-IDF模式"
             logger.info(f"✅ 知识库技能初始化成功（{mode}）")
@@ -88,11 +91,16 @@ class KnowledgeQASkill:
             logger.error(f"知识库技能初始化失败: {e}")
             self.rag_engine = None
 
-    def execute(self, question: str = "", top_k: int = 5,
+    def execute(self, question: str = "", top_k: int = None,
                 need_llm: bool = True, **kwargs) -> Dict[str, Any]:
-        """问答：检索 + 生成回答。need_llm=True 且 LLM 可用 → 综合生成；否则拼接降级"""
+        """问答：检索 + 生成回答。need_llm=True 且 LLM 可用 → 综合生成；否则拼接降级
+
+        top_k 缺省时回落配置值（knowledge.qa_top_k），保证技能链路与服务链路召回口径一致。
+        """
         if not question:
             return {"status": "error", "message": "问题不能为空"}
+
+        top_k = top_k or self.config.get("top_k", 5)
 
         if not self.rag_engine:
             return {"status": "error", "message": "知识库未初始化，请先导入文档"}

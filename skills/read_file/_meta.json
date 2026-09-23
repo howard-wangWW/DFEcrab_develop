@@ -1,0 +1,9 @@
+{
+  "skill_id": "read_file",
+  "version": "1.0.0",
+  "name": "已知路径文件读取",
+  "description": "读取会话附件或工作区内的文件，文本返回带行号内容，图片走本地 OCR 转写（C 类：附件读取链路）",
+  "entry": "execute:execute",
+  "tool": true,
+  "enabled": true
+}

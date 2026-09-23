@@ -1,0 +1,17 @@
+{
+  "name": "web-fetch",
+  "version": "1.0.0",
+  "description": "抓取网页内容，提取标题和正文",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "web-fetch",
+      "description": "抓取网页内容，提取标题和正文",
+      "prompt": "执行技能: web-fetch",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

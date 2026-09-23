@@ -29,6 +29,7 @@ def main():
     from src.knowledge.storage.document_repo import DocumentRepository
     from src.knowledge.embedding.local_embedder import LocalEmbedder
     from src.knowledge.core.vector_store import VectorStore
+    from src.knowledge.core.document_processor import filter_indexable
 
     # 1. 诊断当前嵌入方案
     embedder = LocalEmbedder()
@@ -63,7 +64,7 @@ def main():
             chunks_path = repo.get_chunks_path(doc_id)
             if chunks_path.exists():
                 with open(chunks_path, "r", encoding="utf-8") as f:
-                    chunks = json.load(f)
+                    chunks = filter_indexable(json.load(f))
                     for chunk in chunks:
                         chunk["metadata"]["title"] = doc_info.title
                     all_chunks.extend(chunks)
@@ -74,7 +75,12 @@ def main():
         return
 
     # 4. 生成向量并写入索引
-    contents = [c["content"] for c in all_chunks]
+    # 嵌入统一取「检索位」metadata["content"]（图片片已被 filter_indexable 剔除，
+    # 它们不进索引，靠检索后邻近带出）
+    contents = [
+        (c.get("metadata") or {}).get("content") or c["content"]
+        for c in all_chunks
+    ]
     embeddings = embedder.embed(contents)
     print(f"[构建] 向量矩阵形状: {embeddings.shape}")
 

@@ -1,0 +1,17 @@
+{
+  "name": "file_read",
+  "version": "1.0.0",
+  "description": "",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "file_read",
+      "description": "",
+      "prompt": "执行技能: file_read",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

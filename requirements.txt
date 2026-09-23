@@ -105,10 +105,16 @@ jieba==0.42.1
 # ===== 文档解析（知识库上传 PDF/DOCX/XLSX 依赖） =====
 pymupdf==1.28.2      # PDF 解析；document_loader 依赖，缺失会导致 PDF 上传报"请安装 pymupdf 或 PyPDF2"
 # Excel 解析：.xlsx/.csv 走纯标准库（zipfile + csv），无需任何第三方依赖；
-#             .xls（老 BIFF 二进制）需 xlrd（纯 Python）：离线环境将 wheel 放入 wheels/ 后安装：
-#             pip install --no-index --find-links wheels/ xlrd
-# xlrd==2.0.1        # 可选：仅在需要解析 .xls 时启用（放到上方 pip 之前取消注释并补 wheel）
-# python-docx==1.2.0  与 lxml==6.1.2 见下方"工具/杂项"（已安装），两者无离线 wheel，见 wheels/ 对齐说明
+#             .xls（老 BIFF 二进制）需 xlrd（纯 Python，wheels/ 中已备）
+xlrd==2.0.1          # .xls 解析；缺失时 .xls 上传报明确安装提示，不影响 .xlsx/.csv
+# python-docx==1.2.0  与 lxml==6.1.2 见下方"工具/杂项"（均已安装，wheels/ 中亦均有对应 wheel）
+
+# ===== 知识库 OCR（图片文字识别）=====
+# 不在此文件内声明！见 requirements-ocr.txt。
+# 原因：rapidocr-onnxruntime 声明依赖 opencv-python（完整版），而本方案用
+# opencv-python-headless 替代以免依赖系统 libGL.so.1，包名对不上会使本文件的
+# 「离线一键安装」整体失败。故 OCR 依赖独立成文件，用 --no-deps 二次安装。
+#   ./venv/bin/python3 -m pip install -r requirements-ocr.txt --no-index --find-links wheels/ --no-deps
 
 # ===== gRPC / 服务发现 (Zookeeper) =====
 grpcio==1.80.0

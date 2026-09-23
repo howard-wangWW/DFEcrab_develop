@@ -1,0 +1,17 @@
+{
+  "name": "self-improving-agent",
+  "version": "1.0.0",
+  "description": "Self-improving agent system for OpenClaw. Enables continuous learning from interactions, errors, recoveries, and performance. Automatically improves performance over time.",
+  "author": "leohuang8688",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "self-improving-agent",
+      "description": "Self-improving agent system for OpenClaw. Enables continuous learning from interactions, errors, recoveries, and performance. Automatically improves performance over time.",
+      "prompt": "执行技能: self-improving-agent",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

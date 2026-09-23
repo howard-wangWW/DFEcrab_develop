@@ -1,0 +1,17 @@
+{
+  "name": "nano-pdf",
+  "version": "1.0.0",
+  "description": "当用户需要编辑PDF文件时使用，如\"修改PDF的标题\"、\"编辑PDF内容\"、\"给PDF添加文字\"、\"合并PDF\"、\"拆分PDF\"、\"压缩PDF\"等。nano-pdf使用自然语言指令来编辑PDF。",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "nano-pdf",
+      "description": "当用户需要编辑PDF文件时使用，如\"修改PDF的标题\"、\"编辑PDF内容\"、\"给PDF添加文字\"、\"合并PDF\"、\"拆分PDF\"、\"压缩PDF\"等。nano-pdf使用自然语言指令来编辑PDF。",
+      "prompt": "执行技能: nano-pdf",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

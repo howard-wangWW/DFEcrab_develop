@@ -1,6 +1,5 @@
 {
-  "enabled_skills": [
-    "kunming_classifier",
-    "kunming_api"
-  ]
+  "enabled_skills": [],
+  "builtin_tools": [],
+  "custom_tools": []
 }

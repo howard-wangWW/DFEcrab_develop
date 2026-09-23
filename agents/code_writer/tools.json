@@ -1,3 +1,5 @@
 {
-  "enabled_skills": ["code_executor"]
+  "enabled_skills": ["code_executor"],
+  "builtin_tools": [],
+  "custom_tools": []
 }

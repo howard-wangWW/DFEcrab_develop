@@ -76,10 +76,7 @@
         }
       ],
       "enabled": true,
-      "bound_agents": [
-        "alert_judge",
-        "dfecrab"
-      ]
+      "bound_agents": []
     },
     "alert_judge_tools": {
       "baseUrl": "http://127.0.0.1:8601/mcp",
@@ -184,9 +181,7 @@
         }
       ],
       "enabled": true,
-      "bound_agents": [
-        "alert_judge"
-      ]
+      "bound_agents": []
     },
     "blackxml_topology": {
       "baseUrl": "http://127.0.0.1:8602/mcp",
@@ -194,9 +189,127 @@
       "headers": {},
       "tool_cache": [
         {
+          "function_name": "describe_analysis_datasets",
+          "tool_name": "describe_analysis_datasets",
+          "description": "复杂问题要交给代码沙箱统计、交叉核对或编程时，先查看可下载的完整数据集、字段、筛选条件、去重口径；不要让模型只计算预览行。随后可在Python中import blackxml_mcp并download_dataset。",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "function_name": "export_analysis_dataset",
+          "tool_name": "export_analysis_dataset",
+          "description": "将指定数据集的完整筛选范围导出为不可变JSONL.GZ快照，返回字段、来源、行数、SHA256及有时效的exportId，不在对话内铺开数据。供模型在原生代码沙箱中用blackxml_mcp.download_dataset下载并编程。支持DMIS馈线台账、调度日志、用户标记、zxbh站线变户。没有数据或超限明确失败，绝不返回冒充完整的截断文件。",
+          "parameters": {
+            "type": "object",
+            "required": [
+              "dataset"
+            ],
+            "properties": {
+              "dataset": {
+                "type": "string",
+                "enum": [
+                  "feeder_ledger",
+                  "dispatch_logs",
+                  "user_markers",
+                  "user_relationships"
+                ]
+              },
+              "filters": {
+                "type": "object",
+                "description": "只允许describe_analysis_datasets列出的筛选字段；省略表示完整数据集，不支持limit/SQL/任意文件路径"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "read_analysis_export_chunk",
+          "tool_name": "read_analysis_export_chunk",
+          "description": "代码沙箱Python客户端专用的完整快照分块传输接口。须提供刚生成的exportId。不要在对话中循环调用或打印base64；使用blackxml_mcp.download_dataset自动下载、校验。",
+          "parameters": {
+            "type": "object",
+            "required": [
+              "exportId"
+            ],
+            "properties": {
+              "exportId": {
+                "type": "string"
+              },
+              "offset": {
+                "type": "number"
+              },
+              "length": {
+                "type": "number",
+                "description": "最多524288字节"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "query_feeder_ledger",
+          "tool_name": "query_feeder_ledger",
+          "description": "权威馈线台账问数入口。问全市/区局有多少馈线、多少20kV、各站线路数、运行/备用/退运数量或台账明细，必须调用本工具。仅统计最新DMIS线路台账并去重；不是XML文件计数。电压读取lineLevel，不从母线名补10kV。complete=false必须说明缺失/冲突，不得将候选数当确定总数。可直接导出Office清单。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "district": {
+                "type": "string",
+                "description": "管理单位，如光明。DMIS缺失时关联XML馈线SubControlArea；无明确ID且完整名未匹配时按同源站+同F编号唯一关联，线路后半段名可不同。未匹配/冲突仍区分confirmedSubset部分与最终总数，不按站归属补数，供电所不上卷。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称，精确规范化匹配"
+              },
+              "feeder": {
+                "type": "string"
+              },
+              "bus": {
+                "type": "string"
+              },
+              "voltage": {
+                "type": "string",
+                "description": "线路电压，如20kV；不是变电站电压"
+              },
+              "state": {
+                "type": "string",
+                "description": "台账运行状态，如运行/热备用；不传表示全部状态"
+              },
+              "query": {
+                "type": "string"
+              },
+              "summaryOnly": {
+                "type": "boolean"
+              },
+              "offset": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "includeCandidates": {
+                "type": "boolean",
+                "description": "默认false。仅用户明确要求非正式待核查候选清单时启用；普通馈线数/20kV数问题不得启用。缺归属时必须回答无法确认，不得换工具猜数。"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ]
+              }
+            }
+          }
+        },
+        {
           "function_name": "search_feeders",
           "tool_name": "search_feeders",
-          "description": "搜索馈线。支持按变电站、F编号、线路名或任意关键词检索 BLACKXML 索引。",
+          "description": "仅用于定位BLACKXML图模文件，不是馈线台账统计；同一馈线可能有重复或分片图。数量、电压、区局台账问数必须用query_feeder_ledger。搜索无20kV文字不证明没有20kV线路。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -222,7 +335,7 @@
         {
           "function_name": "get_feeder_topology",
           "tool_name": "get_feeder_topology",
-          "description": "查询某条馈线的拓扑结构，包含电源、图模文本、开关状态、电流、联络点和统计信息。仅当DAT中存在与图模设备ID匹配的测点时返回该开关电流。",
+          "description": "查询某条馈线的完整拓扑。始终返回黑底环网图 PNG 预览和 SVG 完整矢量原图，即使 format=summary 或客户端传入 includeSvg=false 也不会省略附件，避免只口头说已生成。图中按站线变户同一套算法完整保留配变、EnergyConsumer 负荷、HVMotor 高压电机和 Generator 发电机等下游终端；与馈线电源隔离的主文件备用支路仍保留为灰色但不视为已并网电源，XML 端子无对端时以黄色‘孤’标识且不虚构连线；最终走线不会被画布裁切，SVG 可无损放大看清全部文字和连接关系。另返回文件夹风格文本树 topologyText（柜子为目录、开关和配变/负荷/发电机为文件，供理解网架和回答提问用）。用户问某条线拓扑/拓扑结构/环网图/树状图时必须调用本工具，不要说无法画图。默认回答＝环网图+网架概览，不主动贴整棵文件夹树；仅当用户明确要文件夹树/树状图/文本拓扑时才展示，展示方式严格按返回结果里的 instruction 字段执行（小树原样输出，大树给关键分支+完整树 .txt 附件）。返回的 structure 字段是柜级结构摘要（末级柜、最深级数、分支柜、合环情况）；用户追问末级柜/上下游/供电路径/层级等结构问题时改用 query_topology_structure，不要自己数树。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -254,19 +367,36 @@
               "related": {
                 "type": "string",
                 "enum": [
+                  "complete",
                   "auto",
                   "primary",
                   "all"
                 ],
-                "description": "关联图模加载模式，默认 auto。"
+                "description": "出图统一补齐关联馈线；传primary/auto也会升级为complete，防止漏电缆和反送电源。范围上限仍会在图内标明。"
+              },
+              "depth": {
+                "type": "number",
+                "description": "complete 模式下联络展开跳数，默认 1，即本馈线全部直接联络馈线。"
+              },
+              "maxTieFeeders": {
+                "type": "string",
+                "description": "联络馈线预算。默认 auto 与 none 均不按馈线条数裁剪，避免漏掉反送电源；仍受 maxRelated 和 tieDepth 分析边界限制。数字可显式限条数，被省略的列在 omittedTieFeeders；受限图中未追溯到电源不得解释为现场无电。"
               },
               "maxRelated": {
                 "type": "number",
-                "description": "最多关联 XML 数量，默认 64。"
+                "description": "最多关联 XML 数量，complete 默认 128。"
               },
               "maxNodes": {
                 "type": "number",
-                "description": "布局最多节点数，默认 900。"
+                "description": "布局最多节点数，complete 默认 2500。"
+              },
+              "includeSvg": {
+                "type": "boolean",
+                "description": "兼容旧客户端的保留参数；本工具始终生成 PNG 预览和 SVG 原图，传 false 也不会省略附件。"
+              },
+              "maxChars": {
+                "type": "number",
+                "description": "对话内联 topologyText 最大字符数，默认 36000；超出时按层级折叠深层分支而不是硬切（完整树始终写入 .txt 附件，不受此限制）。"
               },
               "limit": {
                 "type": "number",
@@ -276,9 +406,698 @@
           }
         },
         {
+          "function_name": "query_topology_structure",
+          "tool_name": "query_topology_structure",
+          "description": "按供电方向对馈线做柜级结构分析，直接给出可转述的结论：末级柜（供电方向最后一级柜子）、某柜的上游/下游、电源到某柜的供电路径、两个柜之间的路径、按级分层、分支柜、联络柜、某柜由哪条线供电。凡是用户问“末级/最后一级/最末端柜子”“上一级/下一级/带了哪些柜”“供电路径/怎么走”“第几级”“分几路”“联络点在哪”“由谁供电/合环”等结构问题，必须调用本工具并引用 answer，不要自己从 topologyText 文件夹树逐行推算（容易漏柜、串支路、超长被截断）。结果中 answer 已按用户口径组织，data 为结构化明细；回答时柜名与开关号必须与返回一致，不输出推理过程。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。已知文件时优先使用。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "question": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "summary",
+                  "leaf_cabinets",
+                  "path",
+                  "upstream",
+                  "downstream",
+                  "levels",
+                  "branches",
+                  "feed_source",
+                  "between",
+                  "tie_cabinets"
+                ],
+                "description": "问题类型：leaf_cabinets 末级柜；upstream 某柜上游链；downstream 某柜下游所有柜；path 电源到某柜的供电路径；between 两柜之间路径（from→target）；levels 按级分层；branches 分支柜；tie_cabinets 联络柜/联络开关；feed_source 某柜由哪条线供电/合环情况；summary 结构概览。auto 时按 text 里的用户原话自动判断。"
+              },
+              "text": {
+                "type": "string",
+                "description": "用户原话，question=auto 时用于判断问题类型。"
+              },
+              "target": {
+                "type": "string",
+                "description": "关注的柜子或开关名称（可写“柜名+开关号”，如“迳口村口#1公用柜603”）。leaf_cabinets/levels/branches 传 target 时只看该柜下游；upstream/downstream/path/feed_source 必传。"
+              },
+              "from": {
+                "type": "string",
+                "description": "between 时的起点柜子/开关。"
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "feeder",
+                  "all"
+                ],
+                "description": "feeder（默认）只统计本馈线图模文件内的柜子；all 包含已载入的联络馈线柜子。"
+              },
+              "switchStates": {
+                "type": "object",
+                "description": "模拟开关状态覆盖，键为开关ID，值 true=合、false=分。"
+              },
+              "depth": {
+                "type": "number",
+                "description": "联络展开跳数，默认 1。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "answer 中每类清单最多列出条数，默认 30，最大 200；超出部分仍在 data 中。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "get_feeder_network",
+          "tool_name": "get_feeder_network",
+          "description": "画出某条馈线的完整配网图模：生成黑底环网图 PNG 预览和 SVG 完整矢量原图，并给出全部联络馈线、文件夹树和 mermaid 联络图。最终走线路径完整纳入画布，SVG 可无损放大看清全部文字和连接关系。回答“把某条馈线画出来/拓扑结构”时必须调用本工具或 get_feeder_topology。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "depth": {
+                "type": "number",
+                "description": "联络展开跳数，默认 1。需要更远的间接联络时可设为 2。"
+              },
+              "switchStates": {
+                "type": "object",
+                "description": "模拟开关状态覆盖。"
+              },
+              "maxRelated": {
+                "type": "number",
+                "description": "最多关联 XML 数量，默认 128。"
+              },
+              "includeTree": {
+                "type": "boolean",
+                "description": "是否返回完整文本树，默认 true。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "classify_feeder",
+          "tool_name": "classify_feeder",
+          "description": "按流程图实时计算一条馈线的配自分类，并给出转供方案。停电转电：先断开哪个开关、再合上哪个开关；合环转电：先合上哪个开关、再断开哪个开关。输出风格对齐单母失压明细。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "bus": {
+                "type": "string",
+                "description": "可选，指定失压母线，例如 2AM、10kV1M。默认用提示目录台账中该馈线所属母线。"
+              },
+              "outageScope": {
+                "type": "string",
+                "description": "失压范围：bus=单母失压（默认），station=全站失压，stations=多站同时失压。"
+              },
+              "lostStations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "多站失压时的变电站列表。全站失压可不传，默认本馈线所属站。"
+              },
+              "preferredTieSwitch": {
+                "type": "string",
+                "description": "可选，指定主方案联络开关（运行方式联络点），与官方失压明细对齐时传入。"
+              },
+              "preferredDisconnectSwitch": {
+                "type": "string",
+                "description": "可选，指定主方案断开开关。运行方式已对齐时按官方明细断开开关优化。"
+              },
+              "preferredReceiveFeeder": {
+                "type": "string",
+                "description": "可选，指定转入馈线，辅助选定与明细一致的联络点。"
+              },
+              "includeSchemes": {
+                "type": "boolean",
+                "description": "是否加载完整联络图模并给出转电主方案，默认 true。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "query_feeder_classification",
+          "tool_name": "query_feeder_classification",
+          "description": "按DMIS台账圈定并去重馈线后进行配自分类；不是在运线路总量统计。区局/电压/状态筛选以台账为准，缺图及重复图冲突单列，complete=false不得宣称全量准确。问馈线总数/20kV数量直接用query_feeder_ledger。单辐射等用快速口径，用户点名全线/部分转供才细算。清单可导出xlsx/docx/pptx/csv。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "description": "分类：单辐射/单幅射、空载、直联线路失压、直联线路失压(可二次转供)、可直接转电、无直接转电方案、全线遥控转电、需现场转、全部。默认全部并返回计数。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，按变电站过滤。"
+              },
+              "district": {
+                "type": "string",
+                "description": "可选，按区局过滤，例如龙华、福田。"
+              },
+              "bus": {
+                "type": "string",
+                "description": "可选，按母线过滤，例如 2AM。"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选，名称关键词。"
+              },
+              "summaryOnly": {
+                "type": "boolean",
+                "description": "只返回计数不返回清单，默认 false。"
+              },
+              "exportExcel": {
+                "type": "boolean",
+                "description": "用户要 Excel 时为 true，生成可下载 xlsx。"
+              },
+              "exportWord": {
+                "type": "boolean",
+                "description": "用户要 Word/文档/docx 时为 true，生成可下载 docx。"
+              },
+              "exportPowerPoint": {
+                "type": "boolean",
+                "description": "用户要 PPT/PowerPoint/pptx 时为 true，生成可下载 pptx。"
+              },
+              "exportCsv": {
+                "type": "boolean",
+                "description": "用户要 CSV 时为 true。"
+              },
+              "exportFormat": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ],
+                "description": "导出格式：both=xlsx+csv，office=xlsx+docx+pptx，all=全部四种。"
+              },
+              "voltage": {
+                "type": "string",
+                "description": "DMIS线路电压，如20kV"
+              },
+              "state": {
+                "type": "string",
+                "description": "DMIS台账状态，如运行；默认全部状态"
+              },
+              "budgetMs": {
+                "type": "number",
+                "description": "细算批次预算，默认20000，最大30000毫秒；单条图计算不可中断。running=true再调用继续。"
+              },
+              "includeFine": {
+                "type": "boolean",
+                "description": "强制全市图模细算。默认 false。仅当用户明确问全市全线遥控/部分转电/需现场，或指定 station/bus 时才细算。"
+              },
+              "outageScope": {
+                "type": "string",
+                "description": "失压范围：bus=单母失压（默认），station=全站失压，stations=多站同时失压。全站失压时同站不同母线联络视为直联。"
+              },
+              "lostStations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "多站失压的变电站列表。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "对话内联清单条数，默认 50，内联上限约 100；超出或要求导出时完整清单转为附件。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "export_feeder_classification",
+          "tool_name": "export_feeder_classification",
+          "description": "把全市/区局/变电站/母线的配自分类明细导出为可下载 Excel、CSV、Word 或 PowerPoint。严格按用户指定格式生成；不要用代码沙箱导清单。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "description": "分类：单辐射/单幅射、空载、直联线路失压、直联线路失压(可二次转供)、可直接转电、无直接转电方案、全线遥控转电、需现场转、全部。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，按变电站过滤。"
+              },
+              "district": {
+                "type": "string",
+                "description": "可选，按区局过滤，例如龙华、福田。"
+              },
+              "bus": {
+                "type": "string",
+                "description": "可选，按母线过滤。"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选，名称关键词。"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ],
+                "description": "导出格式。默认 both（xlsx+csv）；office=xlsx+docx+pptx；all=全部四种。"
+              },
+              "voltage": {
+                "type": "string",
+                "description": "DMIS线路电压，如20kV"
+              },
+              "state": {
+                "type": "string",
+                "description": "DMIS台账状态，如运行"
+              },
+              "budgetMs": {
+                "type": "number",
+                "description": "细算批次预算默认20000毫秒"
+              },
+              "includeFine": {
+                "type": "boolean",
+                "description": "仅查询全线遥控/部分转电/需现场等细类时启用。"
+              },
+              "outageScope": {
+                "type": "string",
+                "description": "失压范围：bus / station / stations。"
+              },
+              "lostStations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "多站失压的变电站列表。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "预览条数，默认 20；完整数据始终写入导出文件。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "export_office_table",
+          "tool_name": "export_office_table",
+          "description": "把已经整理好的通用二维表导出为可下载 Excel、CSV、Word 或 PowerPoint。仅在没有专用数据导出工具时使用；分类、调度日志、馈线用户和用户标记应优先使用各自专用工具，避免丢失完整数据。",
+          "parameters": {
+            "type": "object",
+            "required": [
+              "title",
+              "headers",
+              "rows",
+              "format"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "文件标题。"
+              },
+              "summary": {
+                "type": "string",
+                "description": "可选，Word/PPT 首页摘要。"
+              },
+              "headers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "表头数组，最多 50 列。"
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {}
+                },
+                "description": "数据二维数组，最多 1000 行。"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ],
+                "description": "导出格式：both=xlsx+csv，office=xlsx+docx+pptx，all=全部四种。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "get_transfer_scheme",
+          "tool_name": "get_transfer_scheme",
+          "description": "查询某条馈线怎么转供。模仿单母失压明细：停电转电先断开哪个开关、再合上哪个开关；合环转电先合上哪个开关、再断开哪个开关。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "bus": {
+                "type": "string",
+                "description": "可选失压母线。"
+              },
+              "outageScope": {
+                "type": "string",
+                "description": "失压范围：bus=单母失压（默认），station=全站失压，stations=多站失压。"
+              },
+              "lostStations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "多站失压的变电站列表。"
+              },
+              "preferredTieSwitch": {
+                "type": "string",
+                "description": "可选，指定与官方明细一致的主方案联络开关。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "compare_n1_outage",
+          "tool_name": "compare_n1_outage",
+          "description": "按全站失压或单母失压口径分类，并与官方失压明细Excel对比。默认全站失压；优先统计主方案联络开关（运行方式联络点）一致的线路准确率。可指定一个或多个变电站做全站/多站场景。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "outageScope": {
+                "type": "string",
+                "description": "bus=单母失压，station=全站失压（默认），stations=多站同时失压。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，只对比一个变电站。"
+              },
+              "lostStations": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "多站失压的变电站列表。"
+              },
+              "district": {
+                "type": "string",
+                "description": "可选，按区局过滤。"
+              },
+              "includeFine": {
+                "type": "boolean",
+                "description": "默认 true，加载图模细算主方案。false 仅初筛，不统计运行方式一致准确率。"
+              },
+              "matchExcelTie": {
+                "type": "boolean",
+                "description": "细算时优先选用官方明细中的主方案联络开关。默认 true。"
+              },
+              "excelPath": {
+                "type": "string",
+                "description": "可选，官方明细 xls/json 路径。默认自动查找全站或单母失压明细。"
+              },
+              "budgetMs": {
+                "type": "number",
+                "description": "细算预算毫秒，默认 20000。"
+              },
+              "offset": {
+                "type": "number",
+                "description": "续算位置：未完成时将返回的 nextOffset 原样传入，其他条件保持不变。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "不一致示例条数，默认 20。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "export_feeder_svg",
+          "tool_name": "export_feeder_svg",
+          "description": "导出环网图 PNG 预览和 SVG 完整矢量原图。问拓扑结构时优先用 get_feeder_topology（已含同一套图）。本工具按站线变户生成算法用实时开关状态画黑底环网图，最终走线不会被画布裁切，SVG 可无损放大查看全部文字和连接关系。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名。"
+              },
+              "related": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "auto",
+                  "primary"
+                ],
+                "description": "关联图模，默认 complete。"
+              },
+              "depth": {
+                "type": "number",
+                "description": "联络展开跳数，默认 1。"
+              },
+              "maxTieFeeders": {
+                "type": "string",
+                "description": "画图默认auto和none均不按馈线数量裁剪；数字显式限制时图内标明范围受限。灰色不能解读为现场无电。"
+              },
+              "out": {
+                "type": "string",
+                "description": "可选输出路径。默认写入最新数据/环网图导出。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "query_dispatch_logs",
+          "tool_name": "query_dispatch_logs",
+          "description": "查询/统计调度日志（实时，覆盖跳闸、缺陷、检修、运行方式、投产送电、保供电、负荷控制、信号处理、自愈、异常未复电等全部事件类型）。支持按日期、事件类型、区局、变电站、馈线、人员、单号、多关键词过滤，groupBy 可按任意维度出 TopN 统计（如哪条馈线故障最多、各区局检修数量）。返回 availableEventTypes 列出当前日志里的全部事件类型。命中条数多时完整明细自动转 CSV；也可按要求导出 Excel、Word 或 PPT。跳闸=故障/故障处理/上级电网跳闸；缺陷=紧急缺陷/缺陷处理。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "日期 YYYY-MM-DD，例如 2026-08-19。"
+              },
+              "from": {
+                "type": "string",
+                "description": "起始日期 YYYY-MM-DD。"
+              },
+              "to": {
+                "type": "string",
+                "description": "结束日期 YYYY-MM-DD。"
+              },
+              "metric": {
+                "type": "string",
+                "description": "快捷口径：跳闸、缺陷、全部。其他类型用 eventType。"
+              },
+              "eventType": {
+                "type": "string",
+                "description": "事件类型，支持模糊和多值（如 检修 匹配检修工作+计划检修；'故障处理,紧急缺陷' 匹配两类）。先看返回的 availableEventTypes。"
+              },
+              "district": {
+                "type": "string",
+                "description": "区局，如 南山、龙华、宝安。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名，如 民治、白芒变电站。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线名或 F 编号，如 塘珠线、F41。"
+              },
+              "person": {
+                "type": "string",
+                "description": "创建人/执行人姓名。"
+              },
+              "orderNo": {
+                "type": "string",
+                "description": "申请单/方式单编号，如 D2026071480。"
+              },
+              "query": {
+                "type": "string",
+                "description": "正文关键词，空格分隔多词=同时满足（AND）。"
+              },
+              "anyOf": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "关键词数组，命中任意一个即可（OR），适合同义词，如 ['接地','短路']。"
+              },
+              "exclude": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "排除关键词数组，出现任意一个则不命中。"
+              },
+              "isEnd": {
+                "type": "string",
+                "description": "是=已结束事件；否=进行中/未结事件。"
+              },
+              "groupBy": {
+                "type": "string",
+                "description": "统计维度：eventType、district、station、feeder、org、date、month、hour、creator、isEnd。返回按次数排序的 groups。"
+              },
+              "groupLimit": {
+                "type": "number",
+                "description": "groups 条数，默认 30。"
+              },
+              "summaryOnly": {
+                "type": "boolean",
+                "description": "只要计数/统计，不要明细。"
+              },
+              "exportCsv": {
+                "type": "boolean",
+                "description": "强制把全部命中明细导出为 CSV 附件。"
+              },
+              "exportExcel": {
+                "type": "boolean",
+                "description": "导出 Excel（xlsx）。"
+              },
+              "exportWord": {
+                "type": "boolean",
+                "description": "导出 Word（docx）。"
+              },
+              "exportPowerPoint": {
+                "type": "boolean",
+                "description": "导出 PowerPoint（pptx）。"
+              },
+              "exportFormat": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ],
+                "description": "指定导出格式。"
+              },
+              "offset": {
+                "type": "number",
+                "description": "明细分页偏移，默认 0。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "内联明细条数，默认 30。命中超过内联上限时完整明细自动转 CSV 附件。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "refresh_data",
+          "tool_name": "refresh_data",
+          "description": "重新加载图模索引、开关状态、电流、母线台账、调度日志。图模/DT/日志更新后调用，保证后续查询用最新数据。",
+          "parameters": {
+            "type": "object",
+            "properties": {}
+          }
+        },
+        {
+          "function_name": "query_bus_feeders",
+          "tool_name": "query_bus_feeders",
+          "description": "直接查询最新DMIS台账的母线与馈线关系，含无图模的线路。电压来自lineLevel，不默认10kV。台账统计与query_feeder_ledger同一口径，预览截断不影响总数。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "station": {
+                "type": "string",
+                "description": "变电站名称，例如 宁远站、福田宁远变电站。"
+              },
+              "bus": {
+                "type": "string",
+                "description": "母线，例如 2AM、10kV1M。与 station 一起列出该母线全部馈线。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线名称或 F 编号，用于反查所属母线。"
+              },
+              "district": {
+                "type": "string"
+              },
+              "voltage": {
+                "type": "string",
+                "description": "线路电压，如20kV"
+              },
+              "state": {
+                "type": "string"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选关键词。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回上限，默认 100。"
+              }
+            }
+          }
+        },
+        {
           "function_name": "get_cabinet_topology",
           "tool_name": "get_cabinet_topology",
-          "description": "查询某个环网柜/开关柜在馈线中的局部拓扑，返回柜内开关状态和相邻开关/柜。",
+          "description": "查询某个环网柜/开关柜在馈线中的局部拓扑：柜内开关状态、相邻开关/柜，以及 position（该柜在供电方向上的层级、上级柜及进线开关、直接下级柜、是否末级、联络开关、由哪条线供电）。用户问“某柜接在哪/上一级是谁/带了什么/是不是末级”时优先用本工具或 query_topology_structure。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -363,7 +1182,7 @@
         {
           "function_name": "assess_switch_operation",
           "tool_name": "assess_switch_operation",
-          "description": "评估单个开关合上/断开后的停电、复电、合环影响，包含影响变压器和用户摘要。",
+          "description": "单步条件仿真：防带负荷分合隔离开关、防带电合地刀、防带地刀或已登记接地线送电。缺失状态拒绝校验，不以默认状态放行。隔离开关带电回路保守阻断，不支持空载操作例外。不是现场操作许可。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -400,6 +1219,13 @@
                 "type": "object",
                 "description": "操作前已有的模拟状态覆盖。"
               },
+              "groundedNodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "操作前已挂临时接地线的精确连接节点ID列表；未提供不证明现场不存在接地线。"
+              },
               "includeUsers": {
                 "type": "boolean",
                 "description": "是否查询影响用户，默认 true。"
@@ -422,7 +1248,7 @@
         {
           "function_name": "simulate_operations",
           "tool_name": "simulate_operations",
-          "description": "按顺序模拟多个开关操作，适合大模型做操作票/仿真推演。",
+          "description": "逐步执行三类防误条件仿真，首个闭锁停止后续序列。防带负荷分合隔离开关、防带电合地刀/挂接地线、防带接地送电。临时接地线须明确登记连接节点；不代表现场操作许可。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -457,19 +1283,60 @@
                         "分",
                         "合",
                         "断开",
-                        "合上"
+                        "合上",
+                        "attach_ground"
                       ]
+                    },
+                    "connectivityNode": {
+                      "type": "string",
+                      "description": "attach_ground 必填：挂接地线的精确连接节点ID，不可用柜名猜测。"
                     }
                   },
                   "required": [
-                    "switch",
                     "action"
+                  ],
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "action": {
+                          "const": "attach_ground"
+                        }
+                      },
+                      "required": [
+                        "connectivityNode"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "action": {
+                          "enum": [
+                            "open",
+                            "close",
+                            "toggle",
+                            "分",
+                            "合",
+                            "断开",
+                            "合上"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "switch"
+                      ]
+                    }
                   ]
                 }
               },
               "switchStates": {
                 "type": "object",
                 "description": "操作前已有的模拟状态覆盖。"
+              },
+              "groundedNodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "操作前已挂临时接地线的精确连接节点ID列表；未提供不证明现场不存在接地线。"
               },
               "includeUsers": {
                 "type": "boolean",
@@ -492,7 +1359,7 @@
         {
           "function_name": "query_impacted_users",
           "tool_name": "query_impacted_users",
-          "description": "按变压器ID查询中压/低压用户清单，可用于停电影响用户明细。",
+          "description": "按变压器ID查询中压/低压用户关联明细（同一户可能挂多台配变，会重复）。停电影响预览可用。对外报户数用 userCounts.externalUsers（去重并剔除考核/内部计量户），与营销《影响用户》表口径一致。要整条馈线去重用户清单并下载文件，必须改用 export_feeder_users。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -511,6 +1378,45 @@
             "required": [
               "transformerIds"
             ]
+          }
+        },
+        {
+          "function_name": "export_feeder_users",
+          "tool_name": "export_feeder_users",
+          "description": "导出一条馈线的去重用户清单，可生成 CSV、Excel、Word 或 PowerPoint。口径：按 consumerId 去重的独立户数，不是变压器-用户关联行。问用户清单/导出全部用户/有多少户必须调用本工具。不要用代码解释器。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "BLACKXML 相对路径。"
+              },
+              "station": {
+                "type": "string",
+                "description": "变电站名称关键词。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "馈线 F 编号或线路名，例如 F19、地王一线。"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ],
+                "description": "导出格式，默认 csv。"
+              },
+              "previewLimit": {
+                "type": "number",
+                "description": "JSON预览行数，默认20。"
+              }
+            }
           }
         },
         {
@@ -608,9 +1514,119 @@
           }
         },
         {
+          "function_name": "query_user_markers",
+          "tool_name": "query_user_markers",
+          "description": "查询用户标记（重要用户/敏感用户/保供电用户/站用变），数据来自 criticalPower 挂牌导出。用于回答哪些是重要用户、某条馈线或变电站带了哪些重要/敏感/保供电用户、某单位是否重要用户、保供电事件涉及哪些用户等。结果默认按客户去重聚合；超过内联上限自动附 CSV，也可按要求导出 Excel、Word 或 PPT。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "标记类型：重要用户、敏感用户、保供电用户、站用变；不填=全部。"
+              },
+              "station": {
+                "type": "string",
+                "description": "可选，按变电站名称过滤（匹配供电电源和配变归属）。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "可选，按馈线名称或F编号过滤，例如 F06、凯滨一线。"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选，按客户名称/行业/保供电事件名/供电局关键词过滤。"
+              },
+              "level": {
+                "type": "number",
+                "description": "可选，按级别过滤：1=一级 2=二级 3=三级。"
+              },
+              "groupByCustomer": {
+                "type": "boolean",
+                "description": "是否按客户去重聚合（同一客户多个保供电事件合并），默认true。"
+              },
+              "exportCsv": {
+                "type": "boolean",
+                "description": "导出 CSV。"
+              },
+              "exportExcel": {
+                "type": "boolean",
+                "description": "导出 Excel（xlsx）。"
+              },
+              "exportWord": {
+                "type": "boolean",
+                "description": "导出 Word（docx）。"
+              },
+              "exportPowerPoint": {
+                "type": "boolean",
+                "description": "导出 PowerPoint（pptx）。"
+              },
+              "exportFormat": {
+                "type": "string",
+                "enum": [
+                  "csv",
+                  "xlsx",
+                  "docx",
+                  "pptx",
+                  "both",
+                  "office",
+                  "all"
+                ],
+                "description": "指定导出格式。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "返回数量上限，默认50，最大500；超出内联上限的完整清单以CSV附件返回。"
+              }
+            }
+          }
+        },
+        {
+          "function_name": "query_maintenance_switches",
+          "tool_name": "query_maintenance_switches",
+          "description": "直接查询当前已安装并生效的 DMIS_SWITCH 检修开关清单，并解析到对应 BLACKXML 馈线。用户问‘哪些开关在检修’、‘找一条有检修开关的馈线’或‘随机展示一张有检修开关的图’时必须调用本工具；不要用调度日志猜，也不要用 list_update_files 判断已安装清单。random=true 会优先从较轻量的精确命中馈线池中随机挑选，并返回 PNG 预览和 SVG 矢量原图。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "station": {
+                "type": "string",
+                "description": "可选，按变电站名称筛选。"
+              },
+              "feeder": {
+                "type": "string",
+                "description": "可选，按 F 编号或线路名筛选。"
+              },
+              "deviceType": {
+                "type": "string",
+                "enum": [
+                  "全部",
+                  "站内开关",
+                  "站外开关"
+                ],
+                "description": "默认全部。"
+              },
+              "query": {
+                "type": "string",
+                "description": "可选，按柜名、开关号、线路名或清单原始设备名筛选。"
+              },
+              "random": {
+                "type": "boolean",
+                "description": "随机选取一条有检修开关的馈线；为 true 时自动生成图。"
+              },
+              "includeDiagram": {
+                "type": "boolean",
+                "description": "是否直接生成所选馈线的 PNG+SVG 图；random=true 时默认 true。"
+              },
+              "limit": {
+                "type": "number",
+                "description": "清单预览馈线数，默认 50；random=true 默认 1。"
+              }
+            }
+          }
+        },
+        {
           "function_name": "list_update_files",
           "tool_name": "list_update_files",
-          "description": "列出管理员放入更新暂存区的XML、站线变户CSV、开关电流DAT和开关状态DT文件。",
+          "description": "仅列出管理员放入更新暂存区、尚待安装的XML、站线变户zxbh、开关电流DAT、开关状态DT和调度日志文件。不得用本工具判断 DMIS_SWITCH 是否已安装；已生效检修清单请用 query_maintenance_switches 或 get_mcp_status。",
           "parameters": {
             "type": "object",
             "properties": {}
@@ -619,7 +1635,7 @@
         {
           "function_name": "update_data_bundle",
           "tool_name": "update_data_bundle",
-          "description": "统一更新BLACKXML、站线变户、开关电流和开关状态，并按需重建索引。执行前会预检全部暂存文件，同名文件自动备份。",
+          "description": "统一更新BLACKXML、站线变户、开关电流、开关状态和调度日志，并按需重建索引。执行前会预检全部暂存文件，同名文件自动备份。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -630,13 +1646,9 @@
                 },
                 "description": "XML文件名列表，最多500个。"
               },
-              "zyFile": {
+              "zxbhFile": {
                 "type": "string",
-                "description": "中压站线变户CSV文件名。"
-              },
-              "dyFile": {
-                "type": "string",
-                "description": "低压站线变户CSV文件名。"
+                "description": "新版站线变户全量文件名（zxbh / *TOCONSUMER*，tar.gz/gz/csv，可无扩展名）。旧版 zyFile/dyFile 已停用。"
               },
               "currentFile": {
                 "type": "string",
@@ -648,6 +1660,21 @@
                   "type": "string"
                 },
                 "description": "开关状态DT文件名列表，最多20个。"
+              },
+              "logFiles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "调度日志 TXT/JSON 文件名，最多20个。也可直接覆盖调度日志目录，查询会自动重载。"
+              },
+              "markerFile": {
+                "type": "string",
+                "description": "用户标记 *criticalPower*.json 文件名（重要/敏感/保供电用户挂牌导出）。"
+              },
+              "maintenanceFile": {
+                "type": "string",
+                "description": "检修开关清单 *DMIS_SWITCH*.txt / *.json 文件名。"
               },
               "rebuild": {
                 "type": "string",
@@ -679,7 +1706,7 @@
         {
           "function_name": "reload_update_manifest",
           "tool_name": "reload_update_manifest",
-          "description": "读取更新暂存区中的reload.json，统一更新XML、站线变户、开关电流和开关状态，成功后归档清单。适合软件定时reload。",
+          "description": "读取更新暂存区中的reload.json，统一更新XML、站线变户、开关电流、开关状态和调度日志，成功后归档清单。适合软件定时reload。",
           "parameters": {
             "type": "object",
             "properties": {
@@ -754,17 +1781,13 @@
         {
           "function_name": "update_station_line_transformer_users",
           "tool_name": "update_station_line_transformer_users",
-          "description": "从更新暂存区导入站-线-变-户CSV并原子切换ZY/DY用户数据集。支持只更新其中一种。",
+          "description": "从更新暂存区导入新版站线变户全量文件（zxbh / R_TOPO_TOCONSUMER_ALL，支持 tar.gz/gz/csv），安装到 text/ 推送目录并原子重建用户数据集。中压/低压按用电类别自动区分。注意：每日推送直接覆盖 text/ 目录文件即可，MCP 每10分钟自动检测并导入，无需调用本工具。",
           "parameters": {
             "type": "object",
             "properties": {
-              "zyFile": {
+              "file": {
                 "type": "string",
-                "description": "中压用户CSV文件名。"
-              },
-              "dyFile": {
-                "type": "string",
-                "description": "低压用户CSV文件名。"
+                "description": "暂存区内的 zxbh 站线变户文件名（可无扩展名）。"
               },
               "confirm": {
                 "type": "string",
@@ -775,6 +1798,7 @@
               }
             },
             "required": [
+              "file",
               "confirm"
             ]
           }
@@ -831,6 +1855,81 @@
           }
         },
         {
+          "function_name": "update_dispatch_logs",
+          "tool_name": "update_dispatch_logs",
+          "description": "从更新暂存区导入调度日志（DMIS_LOG txt/json）。也可把最新导出直接放到调度日志/或最新数据/，查询时按修改时间自动重载，多个全量导出只取最新一份。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "调度日志文件名，txt 或 json，最多20个。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "files",
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "update_user_markers",
+          "tool_name": "update_user_markers",
+          "description": "从更新暂存区安装用户标记 *criticalPower*.json（重要/敏感/保供电用户挂牌导出，每日更新）。也可把新导出直接放到 最新数据/（或根目录、用户标记/），按修改时间自动取最新一份、查询时自动重载，无需重启。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "更新暂存区里的 *criticalPower*.json 文件名。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "file",
+              "confirm"
+            ]
+          }
+        },
+        {
+          "function_name": "update_maintenance_switches",
+          "tool_name": "update_maintenance_switches",
+          "description": "从更新暂存区安装检修开关清单 *DMIS_SWITCH*.txt / *.json。也可把新导出直接放到 最新数据/（或根目录），按修改时间自动取最新一份、画图和仿真时自动重载，无需重启。后续实时表沿用同一文件约定。",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "更新暂存区里的 *DMIS_SWITCH*.txt 或 *.json 文件名。"
+              },
+              "confirm": {
+                "type": "string",
+                "enum": [
+                  "APPLY"
+                ]
+              }
+            },
+            "required": [
+              "file",
+              "confirm"
+            ]
+          }
+        },
+        {
           "function_name": "rebuild_data_indexes",
           "tool_name": "rebuild_data_indexes",
           "description": "数据更新后重建开关电流目录和开关用户数分析索引。全量图模可能需要较长时间。",
@@ -865,7 +1964,7 @@
         {
           "function_name": "get_mcp_status",
           "tool_name": "get_mcp_status",
-          "description": "查看 MCP 服务、BLACKXML、开关状态、用户索引的当前状态。",
+          "description": "查看 MCP 服务、BLACKXML、开关状态、用户索引、母线台账、调度日志和检修开关清单的当前状态。",
           "parameters": {
             "type": "object",
             "properties": {}
@@ -873,9 +1972,7 @@
         }
       ],
       "enabled": true,
-      "bound_agents": [
-        "code_writer"
-      ]
+      "bound_agents": []
     }
   },
   "imports": []

@@ -1,0 +1,17 @@
+{
+  "name": "project_memory",
+  "version": "1.0.0",
+  "description": "",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "project_memory",
+      "description": "",
+      "prompt": "执行技能: project_memory",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

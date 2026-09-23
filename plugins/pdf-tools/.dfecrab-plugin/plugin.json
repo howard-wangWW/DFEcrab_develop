@@ -1,0 +1,17 @@
+{
+  "name": "pdf-tools",
+  "version": "1.0.0",
+  "description": "PDF 工具集，支持页面旋转、合并、拆分等常用 PDF 操作",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "pdf-tools",
+      "description": "PDF 工具集，支持页面旋转、合并、拆分等常用 PDF 操作",
+      "prompt": "执行技能: pdf-tools",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

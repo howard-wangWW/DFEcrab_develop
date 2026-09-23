@@ -1,0 +1,17 @@
+{
+  "name": "planner",
+  "version": "1.0.0",
+  "description": "",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "planner",
+      "description": "",
+      "prompt": "执行技能: planner",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

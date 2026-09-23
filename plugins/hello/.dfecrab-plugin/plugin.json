@@ -1,0 +1,17 @@
+{
+  "name": "hello",
+  "version": "1.0.0",
+  "description": "向指定的人打招呼",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "hello",
+      "description": "向指定的人打招呼",
+      "prompt": "执行技能: hello",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

@@ -25,9 +25,9 @@ if str(_PROJECT_ROOT) not in sys.path:
 from src.knowledge.paths import require_runtime_deps
 require_runtime_deps()
 
-from src.knowledge.storage.document_repo import DocumentRepository
+from src.knowledge.storage.document_repo import DocumentRepository, store_document_images
 from src.knowledge.storage.document_loader import DocumentLoader
-from src.knowledge.core.document_processor import DocumentProcessor
+from src.knowledge.core.document_processor import DocumentProcessor, filter_indexable
 from src.knowledge.core.vector_store import VectorStore
 from src.knowledge.embedding.local_embedder import LocalEmbedder
 
@@ -69,7 +69,10 @@ def rebuild(chunk_size: int, overlap: int):
                 "category": doc.category,
                 "title": doc.title,
             }
-            chunks = processor.process_document(content, metadata)
+            # 图片同样要落盘并带上「检索位」，否则重建后图内文字会从索引里整体消失
+            # （图片片只剩占位块），而这一失效没有任何报错。
+            image_map = store_document_images(repo, doc.doc_id, loader.last_images)
+            chunks = processor.process_document(content, metadata, image_map)
 
             # 覆写切片文件
             chunks_path = repo.get_chunks_path(doc.doc_id)
@@ -101,11 +104,19 @@ def rebuild(chunk_size: int, overlap: int):
         logger.warning("⚠️ 未生成任何切片，跳过索引重建")
         return
 
-    logger.info(f"🛠️  重建向量索引，共 {len(all_chunks)} 个切片 ...")
-    contents = [c["content"] for c in all_chunks]
+    # 图片片不进索引（它们没有检索内容，靠检索后邻近带出）
+    indexable = filter_indexable(all_chunks)
+    logger.info(f"🛠️  重建向量索引，共 {len(indexable)} 个切片 "
+                f"（另有 {len(all_chunks) - len(indexable)} 个图片片不入索引）...")
+    # 嵌入统一取「检索位」metadata["content"]
+    contents = [
+        (c.get("metadata") or {}).get("content") or c["content"]
+        for c in indexable
+    ]
     embeddings = embedder.embed(contents)
     vector_store = VectorStore(dim=embedder.get_dim())
-    vector_store.add(embeddings, [c["id"] for c in all_chunks], [c["metadata"] for c in all_chunks])
+    vector_store.add(embeddings, [c["id"] for c in indexable],
+                     [c["metadata"] for c in indexable])
     vector_store.save(str(repo.index_dir))
 
     for doc in repo.documents.values():

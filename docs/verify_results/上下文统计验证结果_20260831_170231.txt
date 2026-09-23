@@ -1,0 +1,11 @@
+[INFO ] 目标 BASE=http://127.0.0.1:6789 USER=admin
+[PASS ] 连通性 GET /api/v2/sessions -> 200
+[PASS ] chat直答 used_percent=33.4% (5474/16384 tokens, source=llm_usage, categories=['system_prompt', 'tools', 'memory', 'skills', 'messages'])
+[PASS ] task/ReAct used_percent=5.8% (954/16384 tokens, source=llm_usage, categories=['system_prompt', 'tools', 'memory', 'skills', 'messages'])
+[PASS ] chat/stream used_percent=33.4% (5474/16384 tokens, source=llm_usage, categories=['system_prompt', 'tools', 'memory', 'skills', 'messages'])
+[PASS ] 历史tokens ctx_usage_direct_170231 assistant tokens 已落库: {'prompt': 5474, 'completion': 156, 'total': 5630}
+[PASS ] 历史tokens ctx_usage_react_170243 assistant tokens 已落库: {'prompt': 954, 'completion': 209, 'total': 1163}
+[PASS ] 历史tokens ctx_usage_stream_170328 assistant tokens 已落库: {'prompt': 5474, 'completion': 154, 'total': 5628}
+[PASS ] 清理会话 ctx_usage_direct_170231
+[PASS ] 清理会话 ctx_usage_react_170243
+[PASS ] 清理会话 ctx_usage_stream_170328

@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "author": "Kunming Agent",
+  "description": "昆明配网理论题本地问答检索技能，适用于理论题、简答题、操作票、调度纪律等知识问答场景",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "用户原始问题，支持自然语言或第X题"
+      },
+      "top_k": {
+        "type": "integer",
+        "description": "返回候选数量，默认3",
+        "default": 3
+      },
+      "min_score": {
+        "type": "number",
+        "description": "最低相似度阈值，默认0.2",
+        "default": 0.2
+      }
+    },
+    "required": ["query"]
+  }
+}

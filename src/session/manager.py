@@ -96,6 +96,7 @@ class Message:
         metadata: Optional[Dict] = None,
         reasoning: Optional[str] = None,
         structured: Optional[Dict[str, Any]] = None,
+        attachments: Optional[List[Dict[str, Any]]] = None,
     ):
         self.id = id or f"msg_{uuid4().hex[:16]}"
         self.parent_id = parent_id
@@ -121,8 +122,31 @@ class Message:
         self.metadata = metadata or {}
         self.reasoning = reasoning or ""
         self.structured = structured or {}
+        self.attachments = attachments or []
 
     def to_dict(self) -> Dict:
+        attachments = self.attachments or []
+        if attachments:
+            try:
+                from src.files.registry import get as get_file_record
+                merged = []
+                for item in attachments:
+                    if not isinstance(item, dict):
+                        continue
+                    current = dict(item)
+                    file_id = str(current.get("file_id") or "")
+                    if file_id:
+                        rec = get_file_record(file_id)
+                        if rec:
+                            current["filename"] = rec.get("filename", current.get("filename", ""))
+                            current["size"] = int(rec.get("size") or current.get("size") or 0)
+                            current["type"] = rec.get("type", current.get("type", ""))
+                            current["status"] = rec.get("status", current.get("status", "active"))
+                            current["created_at"] = rec.get("created_at", current.get("created_at", ""))
+                    merged.append(current)
+                attachments = merged
+            except Exception:
+                attachments = [a for a in attachments if isinstance(a, dict)]
         return {
             "id": self.id,
             "parent_id": self.parent_id,
@@ -145,6 +169,7 @@ class Message:
             "metadata": self.metadata,
             "reasoning": self.reasoning,
             "structured": self.structured,
+            "attachments": attachments,
         }
 
     @classmethod
@@ -179,6 +204,7 @@ class Message:
             metadata=data.get("metadata", {}),
             reasoning=data.get("reasoning", ""),
             structured=data.get("structured", {}),
+            attachments=data.get("attachments", []),
         )
 
 
@@ -550,6 +576,36 @@ class SessionManager:
                         setattr(m, k, v)
                 return messages[idx]
         return None
+
+    def update_attachment_status(
+        self,
+        session_id: str,
+        file_id: str,
+        status: str,
+    ) -> int:
+        """按 file_id 更新某会话历史消息中的附件状态。
+
+        用于附件被删除后，把消息快照同步改成 deleted，避免 registry 孤儿清理后
+        读历史时回退到旧快照状态。
+        """
+        if self._messages.get(session_id) is None:
+            self._load_messages_for_session(session_id)
+
+        updated = 0
+        messages = self._messages.get(session_id) or []
+        for m in messages:
+            attachments = getattr(m, "attachments", None) or []
+            changed = False
+            for item in attachments:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get("file_id") or "") != file_id:
+                    continue
+                item["status"] = status
+                changed = True
+            if changed:
+                updated += 1
+        return updated
 
     def session_to_dict(self, session: Session, load_messages: bool = True) -> Dict:
         """把 Session 转成完整 dict（含最后一条预览、错误计数、累计 Token 等）

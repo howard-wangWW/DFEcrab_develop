@@ -3,7 +3,7 @@
 对用户查询进行分类，确定应调用的 API 接口，并提取结构化参数
 
 分类规则（由 LLM 在 SKILL.md 中定义）：
-  类别5  - 其他对话（直接回复，不调 API；理论/知识类问答请路由到 knowledge_agent）
+  类别5  - 其他对话（保留兼容）
   类别6  - 跳闸统计（调 /tiaozha）
   类别7  - 早会材料（调 /zaohui）
   类别8  - 受令资格（调 /check_qualification）
@@ -12,15 +12,16 @@
   类别11 - 保供电跳闸（调 /today-baogongdian-trip）
   类别12 - 某局跳闸（调 /today-bureau-trip）
   类别13 - 重过载（调 /overload）
+  类别14 - 理论题问答（调 /kunming_theory_qa）
 
-注意：类别1-4 暂放，后续实现；类别14（理论题）已随 kunming_theory_qa 下线移除。
+注意：类别1-4 暂放，后续实现
 """
 import argparse
 import json
 
 SKILL_METADATA = {
     "name": "kunming_classifier",
-    "description": "对用户查询进行分类，确定应调用的API接口并提取参数。类别: 5-其他对话(不调API), 6-跳闸统计, 7-早会材料, 8-受令资格, 9-异常信号统计, 10-城区一小时跳闸, 11-保供电跳闸, 12-某局跳闸, 13-重过载",
+    "description": "对用户查询进行分类，确定应调用的API接口或理论题检索并提取参数。类别: 5-其他, 6-跳闸统计, 7-早会材料, 8-受令资格, 9-异常信号统计, 10-城区一小时跳闸, 11-保供电跳闸, 12-某局跳闸, 13-重过载, 14-理论题",
     "parameters": {
         "query": {
             "type": "string",
@@ -28,8 +29,8 @@ SKILL_METADATA = {
         },
         "category": {
             "type": "integer",
-            "description": "分类编号: 5=其他对话(直接回复), 6=跳闸统计(/tiaozha), 7=早会材料(/zaohui), 8=受令资格(/check_qualification), 9=异常信号统计(/get_abnormal_signals), 10=城区一小时跳闸(/today-chengqu-1h-trip), 11=保供电跳闸(/today-baogongdian-trip), 12=某局跳闸(/today-bureau-trip), 13=重过载(/overload)",
-            "default": 5
+            "description": "分类编号: 5=其他(直接回复), 6=跳闸统计(/tiaozha), 7=早会材料(/zaohui), 8=受令资格(/check_qualification), 9=异常信号统计(/get_abnormal_signals), 10=城区一小时跳闸(/today-chengqu-1h-trip), 11=保供电跳闸(/today-baogongdian-trip), 12=某局跳闸(/today-bureau-trip), 13=重过载(/overload), 14=理论题(/kunming_theory_qa)",
+            "default": 14
         },
         "startTime": {
             "type": "string",
@@ -79,7 +80,7 @@ SKILL_METADATA = {
     }
 }
 
-def execute(query="", category=5, startTime="", endTime="", personName="", date="", bureau="", mode="", area="", days=3, load_threshold=80, **kwargs):
+def execute(query="", category=14, startTime="", endTime="", personName="", date="", bureau="", mode="", area="", days=3, load_threshold=80, **kwargs):
     """
     分类器执行函数。
     LLM 通过 function calling 确定分类和参数后，这里做校验和返回。
@@ -102,8 +103,8 @@ def execute(query="", category=5, startTime="", endTime="", personName="", date=
             return {"status": "error", "message": "类别13（重过载）需要提供 mode（查询模式）"}
         if mode == "area_count" and not area:
             return {"status": "error", "message": "类别13（重过载）area_count模式需要提供 area（区局名称）"}
-    elif category not in (5, 6, 7, 8, 9, 10, 11, 12, 13):
-        return {"status": "error", "message": f"不支持的类别: {category}，当前仅支持5/6/7/8/9/10/11/12/13"}
+    elif category not in (5, 14):
+        return {"status": "error", "message": f"不支持的类别: {category}，当前仅支持5/6/7/8/9/10/11/12/13/14"}
 
     result = {
         "status": "success",
@@ -122,6 +123,8 @@ def execute(query="", category=5, startTime="", endTime="", personName="", date=
             "days": days,
             "load_threshold": load_threshold
         })
+    elif category == 14:
+        result["route"] = "kunming_theory_qa"
 
     return result
 
@@ -129,7 +132,7 @@ def execute(query="", category=5, startTime="", endTime="", personName="", date=
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--query", default="")
-    parser.add_argument("--category", type=int, default=5)
+    parser.add_argument("--category", type=int, default=14)
     parser.add_argument("--start-time", default="")
     parser.add_argument("--end-time", default="")
     parser.add_argument("--person-name", default="")

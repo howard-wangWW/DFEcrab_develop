@@ -1,0 +1,17 @@
+{
+  "name": "url-shortener",
+  "version": "1.0.0",
+  "description": "生成短链接或还原短链接",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "url-shortener",
+      "description": "生成短链接或还原短链接",
+      "prompt": "执行技能: url-shortener",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

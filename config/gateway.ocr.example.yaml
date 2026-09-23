@@ -1,0 +1,42 @@
+# 知识库配置段参考（config/gateway.yaml 的 knowledge: 段）
+#
+# ★ 不改配置也能用：代码内置了与下面完全相同的默认值，缺失这些键时自动生效。
+#   所以更新包里**不含** config/gateway.yaml —— 那个文件里还有 ZooKeeper 地址和
+#   端口，整文件覆盖会丢掉现场设置。
+#
+# 如需调整，只把下面 `knowledge:` 下你缺的几行插到现场 gateway.yaml 的
+# knowledge: 段里（注意缩进：各键与 upload_max_mb 同级）。
+#
+# 应急开回 OCR（不改文件）：
+#   KNOWLEDGE_OCR_ENABLED=true ./venv/bin/python3 scripts/knowledge_api.py
+#
+# 改完需重启知识库进程生效。
+
+knowledge:
+  # 单文件上传上限（MB），默认 50
+  upload_max_mb: 50
+
+  # ── 切片参数（同事 2026-09-10 改造引入；defaults 与代码内置值一致）──
+  chunk_size: 450            # 单切片目标长度（中文字符）；与 bge-small-zh-v1.5 的 512 token 窗口对齐
+  chunk_overlap: 90          # 相邻切片重叠长度
+  min_chunk_size: 50         # 单切片最小长度（更短的并入相邻片）
+  table_rows_per_chunk: 20   # Excel/表格类文档每片数据行数（表头继承）
+  qa_pair_keep: true         # 问答体文档：问答对尽量不被拆散
+  filter_overfetch: 6        # 按分类检索时的超采倍数（先超采再过滤，避免过滤后结果不足）
+  image_neighbor_radius: 1   # 检索命中后附带「同文档 ±N 片范围内」的图片；0=关闭带图
+
+  # ── OCR（图片文字识别）：把图片型 docx、扫描版 PDF 里的图片文字提取入库 ──
+  #    ★ 默认 **已关闭**（2026-09-11 起）。原因：界面截图 / SCADA 系统图里大部分
+  #      文字与上下文无关，按检测框输出的破碎文本命中率低、还把噪声引进检索，
+  #      且 15 图的手册要跑半分钟。
+  #      现在图片只落盘给前端看，靠「邻近正文被搜到时附带」被带出
+  #      （见 image_neighbor_radius）。引擎代码一行没删，可随时开回来。
+  #    依赖可选：未装 rapidocr-onnxruntime 时自动降级，纯文本文档链路完全不受影响
+  #    （详见 src/knowledge/ocr/engine.py）
+  ocr:
+    enabled: false           # 总开关（环境变量 KNOWLEDGE_OCR_ENABLED=true 可应急开回）
+    max_images: 50           # 单个 docx 最多识别多少张图片（超出部分只计数不识别）
+    max_pages: 50            # 扫描版 PDF 最多识别多少页（按尝试次数计，超出只保留原文本）
+    min_image_px: 64         # 任一边小于该像素的图片跳过（图标/logo，识别价值低还费时间）
+    pdf_text_threshold: 20   # PDF 某页文本少于该字数即视为扫描页，渲染后做 OCR
+    dpi: 200                 # 扫描页渲染精度；调高更准但更慢

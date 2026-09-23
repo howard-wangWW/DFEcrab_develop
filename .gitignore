@@ -43,30 +43,29 @@ env/
 # Mac
 .DS_Store
 
-# ===== 2026-09-20 补充：运行时数据与大文件 =====
-# 运行时状态（会话/记忆/用量事件/任务存储）
-data/
-nohup.out
-.env
+# ===== 运行时数据 / 大文件（2026-09 整理，不入库）=====
+/data/
+/runtime/
+/review_scope_out/
 
-# 模型权重（体积过大，离线另行分发）
-models/
-runtime/bin/
+# 模型权重（体积大，走外部方式获取，不入库）
+/models/
 
-# 业务数据库 / 网格数据 / 缓存
-*.sqlite
-*.sqlite3
-*.db-journal
-mcp_servers/blackxml-topology-mcp/用户列表索引/
-mcp_servers/blackxml-topology-mcp/.cache/
-mcp_servers/blackxml-topology-mcp/*.DAT
-
-# Node / macOS / 编辑器
-node_modules/
-.DS_Store
-
-# DRM 透明加密文件：git 读取为密文的文件不纳入仓库
-src/agent/multi/reflector.py
-
-# 电网拓扑历史快照（运行时数据，1.5万+ 文件，1.5GB）
+# 拓扑数据与数据库（BLACKXML 快照 / sqlite / 大 DAT）
 mcp_servers/blackxml-topology-mcp/BLACKXML/
+mcp_servers/blackxml-topology-mcp/用户列表索引/
+mcp_servers/blackxml-topology-mcp/*.DAT
+mcp_servers/blackxml-topology-mcp/*.sqlite
+
+# 知识库索引 / 媒体 / 中间产物
+/knowledge_base/index/
+/knowledge_base/media/
+/knowledge_base/processed/
+
+# 备份 / 临时 / 可执行文件
+*.bak
+*.bak.*
+*.orgin
+nohup.out
+/dfecrab
+*.sqlite

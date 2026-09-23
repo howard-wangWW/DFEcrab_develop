@@ -1,0 +1,58 @@
+# DFEcrab 知识库 OCR 依赖（可选增强，2026-09-10）
+#
+# 用途：让「正文全在图片里」的 docx 与扫描版 PDF 也能提取文字并入库。
+#       不装也能跑 —— src/knowledge/ocr/engine.py 探测失败只 logger.warning，
+#       纯文本文档链路完全不受影响；图片型文档会返回明确的报错原因。
+#
+# ── 为什么单独一个文件，而不是并进 requirements.txt ──────────────────
+#   rapidocr-onnxruntime 声明依赖 opencv-python（完整版），而完整版 wheel 需要
+#   系统库 libGL.so.1。无头服务器常缺该库，装上后会在 import cv2 时报
+#   ImportError: libGL.so.1: cannot open shared object file。
+#   因此这里改用 opencv-python-headless（同样提供 cv2 模块，但不依赖 libGL）。
+#   包名对不上会让 pip 的依赖解析失败，所以 rapidocr 必须用 --no-deps 单独安装。
+#   若把 rapidocr 写进 requirements.txt，那条「离线一键安装」命令会整体失败，
+#   一个包都装不上，故独立成文件。
+#
+# ── 安装 ─────────────────────────────────────────────────────────
+# 已有 venv 的服务器，只需这一条（本次更新就是这种情况）：
+#   ./venv/bin/python3 -m pip install -r requirements-ocr.txt --no-index --find-links wheels/ --no-deps
+#
+# 从零重建 venv 时才需要先跑 requirements.txt：
+#   ./venv/bin/python3 -m pip install -r requirements.txt --no-index --find-links wheels/
+#   （然后仍要跑上面那条 OCR 命令）
+# 注意 prerequisites：requirements.txt 里 132 个包有 85 个不在 wheels/（torch/AI 栈），
+# 所以那条命令只在「venv 已按 requirements.txt 装好、pip 全部报 already satisfied」时
+# 才会顺利通过。已有 venv 上跑它不会报错，但也装不了 OCR——OCR 必须靠上面 --no-deps 那条。
+#
+# ── 自检（装完务必跑一次）───────────────────────────────────────────
+#   ./venv/bin/python3 -c "from src.knowledge.ocr.engine import get_ocr_engine; \
+#       e=get_ocr_engine(); print(e.is_available(), e.get_info())"
+#   期望输出：True {'available': True, 'engine': 'rapidocr-onnxruntime', 'error': None}
+#
+# ── 注意事项 ───────────────────────────────────────────────────────
+#  - --no-deps 意味着本文件必须列全 rapidocr 的运行时依赖，一个都不能少，
+#    否则要到 import 时才报错。下列清单取自 rapidocr_onnxruntime-1.4.4 的
+#    wheel 元数据（Requires-Dist）并追加 onnxruntime 自身的依赖。
+#  - 装完后 `pip check` 会报 opencv-python 缺失 —— 这是上面 headless 替代方案的
+#    预期现象，不代表环境有问题；`import cv2` 与 OCR 功能均正常。
+#  - rapidocr-onnxruntime 要求 Python>=3.6,<3.13；部署机 3.12.7 满足。
+#    升级 Python 到 3.13+ 前必须先确认 rapidocr 已出支持版本。
+#  - numpy(1.26.4) / PyYAML / tqdm / packaging / protobuf 已由 requirements.txt 安装，
+#    此处不重复声明，避免离线解析出第二个版本。
+#  - wheels/ 合计约 95MB 由这 10 个包贡献，是本次新增体积的主要来源。
+
+# ===== OCR 引擎（纯 Python wheel，ONNX 模型内置，无需联网下载模型）=====
+rapidocr-onnxruntime==1.4.4
+onnxruntime==1.29.0
+
+# ===== 图像处理（headless 版，替代 opencv-python，不依赖 libGL）=====
+opencv-python-headless==4.11.0.86
+
+# ===== rapidocr 的其余运行时依赖（--no-deps 下必须显式列出）=====
+pyclipper==1.4.0
+Shapely==2.1.2
+six==1.17.0
+Pillow==12.3.0          # 同时被 document_loader 用于读取图片尺寸（过滤图标/logo）
+
+# ===== onnxruntime 的运行时依赖 =====
+flatbuffers==25.12.19

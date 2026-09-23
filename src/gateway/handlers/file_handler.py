@@ -28,16 +28,48 @@ logger = logging.getLogger(__name__)
 _CFG_DEFAULTS = {
     "max_file_size_mb": 10,
     "max_files_per_session": 5,
-    "allowed_extensions": [".txt", ".md", ".log", ".csv", ".xlsx"],
+    # ★ 文件上传放开（2026-09-22）：真实值以 dfecrab.json file_upload.allowed_extensions 为准，
+    #   此处仅作配置段缺失时的兜底，与配置段保持同集合。
+    "allowed_extensions": [
+        ".txt", ".md", ".markdown", ".log",
+        ".json", ".xml", ".yaml", ".yml", ".toml",
+        ".ini", ".conf", ".cfg",
+        ".py", ".js", ".ts", ".sh", ".sql", ".html", ".htm", ".css",
+        ".tsv", ".csv", ".xlsx",
+        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
+    ],
 }
 
 # MIME 显式覆盖（不依赖系统注册表：Windows 会把 .csv 识别为 application/vnd.ms-excel）
 _MIME_OVERRIDES = {
     ".txt": "text/plain",
     ".md": "text/markdown",
+    ".markdown": "text/markdown",
     ".log": "text/plain",
     ".csv": "text/csv",
+    ".tsv": "text/tab-separated-values",
     ".json": "application/json",
+    ".xml": "application/xml",
+    ".yaml": "application/yaml",
+    ".yml": "application/yaml",
+    ".toml": "application/toml",
+    ".ini": "text/plain",
+    ".conf": "text/plain",
+    ".cfg": "text/plain",
+    ".py": "text/x-python",
+    ".js": "text/javascript",
+    ".ts": "text/plain",
+    ".sh": "text/x-sh",
+    ".sql": "text/plain",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".css": "text/css",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".webp": "image/webp",
 }
 
 
@@ -147,7 +179,7 @@ class FileHandler:
                     "file_id": record["file_id"],
                     "filename": record["filename"],
                     "size": record["size"],
-                    "type": ext,
+                    "type": record.get("type") or ext,
                     "created_at": record.get("created_at", ""),
                 },
             }
@@ -182,7 +214,7 @@ class FileHandler:
                         "file_id": f["file_id"],
                         "filename": f["filename"],
                         "size": f["size"],
-                        "type": Path(f.get("filename", "")).suffix.lower(),
+                        "type": f.get("type") or Path(f.get("filename", "")).suffix.lower(),
                         "created_at": f.get("created_at", ""),
                     } for f in files],
                 },
@@ -220,6 +252,18 @@ class FileHandler:
                 except Exception as e:
                     logger.warning(f"[FileHandler] 删除落盘失败 {storage}: {e}")
             mark_deleted(file_id)
+            try:
+                from src.session.manager import get_session_manager
+                session_mgr = get_session_manager()
+                updated = session_mgr.update_attachment_status(
+                    session_id=str(rec.get("session_id") or ""),
+                    file_id=file_id,
+                    status="deleted",
+                )
+                if updated:
+                    session_mgr.save_session(str(rec.get("session_id") or ""))
+            except Exception as e:
+                logger.warning(f"[FileHandler] 同步历史附件状态失败（忽略继续）: {e}")
             logger.info(f"[FileHandler] 删除附件: {file_id} ({rec.get('filename')})")
             return {"success": True, "message": f"文件已删除: {rec.get('filename')}"}
         except Exception as e:

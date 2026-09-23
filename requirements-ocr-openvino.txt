@@ -1,0 +1,61 @@
+# DFEcrab 知识库 OCR 依赖 —— glibc 2.17 老系统专用（openvino 后端，2026-09-11）
+#
+# 用途：与同目录 requirements-ocr.txt 完全相同（把图片里的文字提取入库），
+#       只是换了一个推理后端。仅在 glibc < 2.27 的机器上使用。
+#
+# ── 为什么 glibc 2.17 上必须换后端 ──────────────────────────────
+#   onnxruntime 从未为 cp312 发布过 manylinux2014（glibc 2.17）的 wheel，
+#   最低标签是 manylinux_2_27 —— 其全部 cp312 x86_64 wheel 都是
+#   manylinux_2_27.manylinux_2_28 或仅 manylinux_2_28。
+#   目标机实测 `ldd --version` = 2.17（CentOS 7 系），故 onnxruntime 整条路不通。
+#
+#   rapidocr-openvino 与 rapidocr-onnxruntime 是同项目、同版本（1.4.4）、
+#   同 API（都导出 rapidocr_*.RapidOCR），内置同样的 ch_PP-OCRv4 模型，
+#   识别效果一致，只是推理后端换成 openvino。
+#
+#   openvino 2024.6.0 的 cp312 wheel 标签是 manylinux2014。已实测其 26 个 .so
+#   最高只要求 GLIBC_2.16 / GLIBCXX_3.4.19 / CXXABI_1.3.3，glibc 2.17 可满足
+#   （GLIBCXX_3.4.19 正是 CentOS 7 自带 gcc 4.8.5 的上限，卡得刚好）。
+#
+# ── ★ 版本锁定原因（勿擅自升级）────────────────────────────────
+#   · openvino 必须 <= 2024.x：rapidocr_openvino/utils/infer_engine.py 用的是
+#     `from openvino.runtime import Core`，而该命名空间在 openvino 2025.0 已被移除，
+#     升到 2025.x 会直接 ImportError。
+#   · rapidocr-openvino 的元数据声明 `openvino<=2024.0.0`，但 cp312 +
+#     manylinux2014 的 openvino 最低只有 2024.1.0（2024.0.0 无 cp312 wheel）。
+#     故此处取 2024.6.0（2024.x 最后一个版本），并用 --no-deps 绕过该声明。
+#   · Pillow 必须 <= 12.2.0：12.3.0 起不再发布 manylinux2014 的 cp312 wheel。
+#     因此本文件与 requirements-ocr.txt 的 Pillow 版本不同，两份不能同时装。
+#
+# ── 安装（在项目根执行；前提：wheels/ 与 wheels-glibc217/ 都已解出）──────
+#   ./venv/bin/python3 -m pip install -r requirements-ocr-openvino.txt \
+#       --no-index --find-links wheels/ --find-links wheels-glibc217/ --no-deps
+#
+#   一键更新包的 install.sh 会自动探测平台标签并选择本文件，无需手工执行。
+#
+# ── 自检 ─────────────────────────────────────────────────────────
+#   ./venv/bin/python3 -c "from src.knowledge.ocr.engine import get_ocr_engine; \
+#       e=get_ocr_engine(); print(e.is_available(), e.get_info())"
+#   期望：True {'available': True, 'engine': 'rapidocr-openvino', 'error': None}
+#
+# ── 注意事项 ─────────────────────────────────────────────────────
+#  - 与 requirements-ocr.txt 同理：--no-deps 下本文件必须列全运行时依赖，一个都不能少。
+#  - pip check 报 opencv-python 缺失是预期现象（用 headless 替代，避免依赖 libGL）。
+#  - numpy 不在此处 pin 版本：项目知识库的嵌入/检索本就依赖它，必有，
+#    且 pin 错版本可能影响 annoy 等已装组件。万一缺失，install.sh 自检会报出来，
+#    用包内 wheels-glibc217/ 下的 numpy wheel 补装即可。
+
+# ===== OCR 引擎（openvino 后端，模型内置包内，无需联网下载）=====
+rapidocr-openvino==1.4.4
+openvino==2024.6.0
+
+# ===== 图像处理（headless，复用 wheels/ 里的 manylinux2014 wheel）=====
+opencv-python-headless==4.11.0.86
+
+# ===== rapidocr 的运行时依赖（--no-deps 下必须显式列出）=====
+pyclipper==1.4.0
+Shapely==2.1.2
+six==1.17.0
+Pillow==12.2.0          # ← 与 requirements-ocr.txt 的 12.3.0 不同，见上「版本锁定」
+tqdm==4.70.0
+PyYAML==6.0.3

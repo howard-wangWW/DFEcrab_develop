@@ -55,20 +55,24 @@ class KnowledgeSearchSkill:
             from ..storage.document_repo import DocumentRepository
             
             top_k = self.config.get("top_k", 5)
+            max_per_doc = self.config.get("max_per_doc", 2)
+            max_context_chunks = self.config.get("max_context_chunks", top_k)
             embedder = get_local_embedder()
-            
+
             vector_store = load_default_vector_store(embedder.get_dim())
-            
+
             retriever = HybridRetriever(
                 vector_store=vector_store,
                 embedder=embedder,
-                use_rerank=True
+                use_rerank=True,
+                max_per_doc=max_per_doc,
             )
-            
+
             self.rag_engine = RAGQueryEngine(
                 retriever=retriever,
                 llm_client=None,
-                top_k=top_k
+                top_k=top_k,
+                max_context_chunks=max_context_chunks,
             )
             
             self.repo = DocumentRepository()
@@ -79,23 +83,27 @@ class KnowledgeSearchSkill:
             logger.error(f"知识库检索技能初始化失败: {e}")
             self.rag_engine = None
     
-    def execute(self, query: str = "", top_k: int = 5, 
+    def execute(self, query: str = "", top_k: int = None,
                 category: str = None, knowledge_base: str = None,
                 **kwargs) -> Dict[str, Any]:
-        """执行检索"""
+        """执行检索；top_k 缺省时回落配置值（knowledge.qa_top_k）"""
         if not query:
             return {"status": "error", "message": "查询不能为空"}
         
         if not self.rag_engine:
             return {"status": "error", "message": "知识库未初始化"}
         
+        top_k = top_k or self.config.get("top_k", 5)
+
         try:
             # 如果指定了知识库名称，在查询中添加
             search_query = query
             if knowledge_base:
                 search_query = f"{query} {knowledge_base}"
-            
-            result = self.rag_engine.query(search_query, top_k=top_k * 2)
+
+            # 超采倍数走配置（knowledge.filter_overfetch），过滤后仍能凑满 top_k
+            overfetch = max(1, int(self.config.get("filter_overfetch", 6)))
+            result = self.rag_engine.query(search_query, top_k=top_k * overfetch)
             
             # 过滤结果
             sources = result.get("sources", [])

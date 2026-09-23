@@ -1,0 +1,17 @@
+{
+  "name": "download-install",
+  "version": "1.0.0",
+  "description": "下载网络文件、解压ZIP包、安装技能、设置环境变量",
+  "author": "DFEcrab",
+  "migrated_from": "legacy_skill",
+  "commands": [],
+  "skills": [
+    {
+      "name": "download-install",
+      "description": "下载网络文件、解压ZIP包、安装技能、设置环境变量",
+      "prompt": "执行技能: download-install",
+      "file_patterns": []
+    }
+  ],
+  "hooks": []
+}

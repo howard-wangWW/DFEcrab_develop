@@ -1,0 +1,7 @@
+{
+  "greeting": "你好",
+  "max_count": 500,
+  "enable_background_task": true,
+  "log_level": "INFO",
+  "auto_start": true
+}
